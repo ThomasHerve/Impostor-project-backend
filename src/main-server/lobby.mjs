@@ -9,13 +9,12 @@ const joinerMap = {}
 
 /**
  * Function which handle the creation of a new lobby
- * @param {String} idLobby the lobby id given by the client
  * @param {Object} player the player
  * @param {Function} successFunction a function which will be called if the lobby creation is a success
  */
 function createLobby(player, successFunction) {
     let idLobby = generateLobbyID()
-    successFunction()
+    successFunction(idLobby)
     lobbyMap[idLobby] = [player]
     ownerMap[player] = idLobby
 }
@@ -57,20 +56,19 @@ function leaveLobby(player, notifyPlayerFunction, notifyPlayerDisbandFunction) {
         delete ownerMap[player]
         lobbyArray.forEach((p)=>{
             if(p != player) {
-                notifyPlayerDisbandFunction()
-                delete joinerMap[player]    
+                notifyPlayerDisbandFunction(p)
+                delete joinerMap[player]
             }
         })
     } else { // Player case
         lobbyMap[joinerMap[player]].forEach((p)=>{
             if(p != player) {
-                notifyPlayerDisbandFunction()
-                delete joinerMap[player]    
+                notifyPlayerFunction(p, player)
             }
         })
-        let index = lobbyMap[joinerMap[player]].indexOf(p)
+        let index = lobbyMap[joinerMap[player]].indexOf(player)
         if(index > -1) {
-            lobbyMap[joinerMap[player]] = lobbyMap[joinerMap[player]].splice(index, 1)
+            lobbyMap[joinerMap[player]].splice(index, 1)
         }
         delete joinerMap[player]
     }
