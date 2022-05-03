@@ -1,9 +1,9 @@
 // ********************* DATA STRUCTURES ********************
 
 const minPlayers = 4
-const lobbyMap = {}
-const ownerMap = {}
-const joinerMap = {}
+const lobbyMap = {} // ID -> player[]
+const ownerMap = {} // player -> ID
+const joinerMap = {} // player -> ID
 
 // ********************* PUBLIC FUNCTIONS *******************
 
@@ -36,9 +36,9 @@ function joinLobby(idLobby, player, successFunction, failureFunction, newPlayerE
             // player = player data to send
             newPlayerEnterFunction(p, player)
         })
+        successFunction(lobbyMap[idLobby])
         lobbyMap[idLobby].push(player)
         joinerMap[player] = idLobby
-        successFunction()
     }
 }
 
@@ -82,8 +82,8 @@ function leaveLobby(player, notifyPlayerFunction, notifyPlayerDisbandFunction) {
 function launchGame(player, launchFunction) {
     if(player in ownerMap && lobbyMap[ownerMap[player]].length >= minPlayers) {
         let idLobby = ownerMap[player]
-        launchFunction(lobbyMap[idLobby])
         lobbyMap[idLobby].forEach((p)=>{
+            launchFunction(p)
             if(p != player) {
                 delete joinerMap[p]
             }
@@ -93,16 +93,30 @@ function launchGame(player, launchFunction) {
     }
 }
 
+/**
+ * Function to generate a random ID
+ * @param {number} length the length of the id
+ */
+function makeId(length) {
+    var result           = '';
+    var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var charactersLength = characters.length;
+    for ( var i = 0; i < length; i++ ) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
+}
+
+
 // ********************* PRIVATE FUNCTIONS *******************
 
 function generateLobbyID() {
-    let idLobby = "123456" // TO CHANGE
+    let idLobby = makeId(5)
     while(idLobby in lobbyMap) {
-        idLobby = "234567" // TO CHANGE
+        idLobby = makeId(5)
     }
     return idLobby
 }
-
 
 export function Lobby() {
     return {
@@ -110,6 +124,7 @@ export function Lobby() {
         'joinLobby': joinLobby,
         'leaveLobby': leaveLobby,
         'launchGame': launchGame,
+        'makeId': makeId,
 
         // Expose this data structures for testing purposes
         'lobbyMap': lobbyMap,

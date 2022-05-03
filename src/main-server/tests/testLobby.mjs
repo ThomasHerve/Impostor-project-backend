@@ -18,9 +18,9 @@ asserts(test == 1)
 
 let testJoinCallback = []
 let joinCallback = (target, newPlayer) => {testJoinCallback.push([target, newPlayer])}
-lobby.joinLobby(idLobby, p2, () => {test++}, () => {}, joinCallback)
-lobby.joinLobby(idLobby, p3, () => {test++}, () => {}, joinCallback)
-lobby.joinLobby(idLobby, p4, () => {test++}, () => {}, joinCallback)
+lobby.joinLobby(idLobby, p2, (a) => {test++}, () => {}, joinCallback)
+lobby.joinLobby(idLobby, p3, (a) => {test++}, () => {}, joinCallback)
+lobby.joinLobby(idLobby, p4, (a) => {test++}, () => {}, joinCallback)
 asserts(test == 4)
 
 // Check the callbacks are corrects
@@ -48,6 +48,10 @@ asserts(notifyLeave[2][1] == p2)
 asserts(notifyLeave[0][0] !=  p2)
 asserts(notifyLeave[1][0] != p2)
 asserts(notifyLeave[2][0] != p2)
+
+
+console.log(lobby.joinerMap)
+console.log(lobby.lobbyMap)
 
 console.log("All tests passed !")
 
