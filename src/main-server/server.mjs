@@ -1,7 +1,8 @@
 import { WebSocketServer } from 'ws';
 import { Lobby } from './lobby.mjs'
+import { GameInterface } from './main.mjs'
 const lobby = Lobby()
-
+const game = GameInterface()
 
 // ********************* SERVER LOGIC ********************
 
@@ -71,21 +72,35 @@ wss.on('connection', (ws)=>{
         } else if(data.type === "leaveLobby") {
             leaveLobby(data.playerID)
         } else if(data.type === "launchGame") {
+            // Start game
+            let gameInstance = game.createGame()
             lobby.launchGame(data.playerID, (playerID) => {
+                let alive = true
                 playersMap[playerID].ws.send({
                     "type": "startGame",
-                    // TODO
-                },(error)=>{})
+                    "gameID": gameID
+                },(error)=>{alive = false})
+                
+                // Add player to the game
+                if(alive) {
+                    gameInstance.addPlayer(gameID, {
+                        'id': playerID,
+                        'name': playersMap[playerID].name,
+                        'ws': playersMap[playerID].ws
+                    })
+                }
                 delete playersMap[playerID]
             })
+            gameInstance.startGame()
+        } else {
+            game.handleMessage(data, ws)
         }
     })
 })
 
 // ********************* DATA STRUCTURES ********************
 
-playersMap = {} // ID -> {name, websocket}
-
+const playersMap = {} // ID -> {name, websocket}
 
 // *********************     FUNCTIONS   ********************
 
