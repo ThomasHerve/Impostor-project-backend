@@ -19,15 +19,16 @@ const wss = new WebSocketServer({
  */
 wss.on('connection', (ws)=>{
     ws.on('message', (data)=>{
+        data = JSON.parse(data)
         if(data.type === "createLobby") {
             let id = registerPlayer(data.playerName, ws)
             lobby.createLobby(
                 id,
                 (lobbyID) => {
-                    ws.send({
+                    ws.send(JSON.stringify({
                         "type": "lobbyCreated",
                         "lobbyID" : lobbyID,
-                    }, (error) => {
+                    }), (error) => {
                         leaveLobby(id)
                     })
                 }
@@ -43,19 +44,19 @@ wss.on('connection', (ws)=>{
                     playerIDList.forEach((id)=>{
                         playerArray.push(playersMap[id].name)
                     })
-                    ws.send({
+                    ws.send(JSON.stringify({
                         "type": "lobbyJoinSuccess",
                         "playersID": playerArray 
-                    },
+                    }),
                     (error)=>{
                         leaveLobby(id)
                     })
                 },
                 // failure : lobby doesn't exist
                 () => {
-                    ws.send({
+                    ws.send(JSON.stringify({
                         "type": "nonExistingLobby"
-                    }, 
+                    }), 
                     (error) => {delete playersMap[id]})
                 },
                 // Callback for other players
@@ -76,10 +77,10 @@ wss.on('connection', (ws)=>{
             let gameInstance = game.createGame()
             lobby.launchGame(data.playerID, (playerID) => {
                 let alive = true
-                playersMap[playerID].ws.send({
+                playersMap[playerID].ws.send(JSON.stringify({
                     "type": "startGame",
                     "gameID": gameID
-                },(error)=>{alive = false})
+                }),(error)=>{alive = false})
                 
                 // Add player to the game
                 if(alive) {
@@ -128,17 +129,20 @@ function registerPlayer(name, ws) {
 function leaveLobby(playerID) {
     lobby.leaveLobby(playerID,
         // Non owner leaving
-        (playerID, playerLeavingID)=>{
-            playersMap[playerID].ws.send({
+        (pID, playerLeavingID)=>{
+            playersMap[pID].ws.send(JSON.stringify({
                 "type": "playerLeave",
                 "playerLeavingName": playersMap[playerLeavingID]
+            }),(error)=>{
+                leaveLobby(playersMap[pID])
             })
         },
         // Owner leaving
-        (playerID)=>{
-            playersMap[playerID].ws.send({
+        (pID)=>{
+            playersMap[pID].ws.send(JSON.stringify({
                 "type": "lobbyDestroyed",
-            })
+            }),(error)=>{})
+            delete playersMap[pID]
         }
     )
     delete playersMap[playerID]
@@ -147,8 +151,8 @@ function leaveLobby(playerID) {
 /**
  * 
  * Send type:
- * - createLobby (name)
- * - joinLobby (name, lobbyID)
+ * - createLobby (playerName)
+ * - joinLobby (playerName, lobbyID)
  * - leaveLobby (id)
  * - launchGame (id)
  * 
