@@ -68,11 +68,16 @@ function createGame () {
     return new Game()
 }
 
+function handleLeave(id) {
+
+}
+
 
 export function GameInterface() {
     return {
         'createGame': createGame,
-        'handleMessage': handleMessage
+        'handleMessage': handleMessage,
+        'handleLeave':handleLeave
     }
 }
 

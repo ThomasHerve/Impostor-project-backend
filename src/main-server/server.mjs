@@ -18,19 +18,26 @@ const wss = new WebSocketServer({
  * - lobbyID : id of the lobby to join
  */
 wss.on('connection', (ws)=>{
+    let id = ""
+    ws.on('close', ()=>{
+        if(id in playersMap) {
+            console.log(`Player ${playersMap[id].name} leaved`)
+            leaveLobby(id)
+        } else {
+            game.handleLeave(id)
+        }
+    })
     ws.on('message', (data)=>{
         data = JSON.parse(data)
         if(data.type === "createLobby") {
-            let id = registerPlayer(data.playerName, ws)
+            id = registerPlayer(data.playerName, ws)
             lobby.createLobby(
                 id,
                 (lobbyID) => {
                     ws.send(JSON.stringify({
                         "type": "lobbyCreated",
                         "lobbyID" : lobbyID,
-                    }), (error) => {
-                        leaveLobby(id)
-                    })
+                    }))
                 }
             )
         } else if(data.type === "joinLobby") {
@@ -47,26 +54,19 @@ wss.on('connection', (ws)=>{
                     ws.send(JSON.stringify({
                         "type": "lobbyJoinSuccess",
                         "playersID": playerArray 
-                    }),
-                    (error)=>{
-                        leaveLobby(id)
-                    })
+                    }))
                 },
                 // failure : lobby doesn't exist
                 () => {
                     ws.send(JSON.stringify({
                         "type": "nonExistingLobby"
-                    }), 
-                    (error) => {delete playersMap[id]})
+                    }))
                 },
                 // Callback for other players
                 (playerID, newPlayerID) => {
                     playersMap[playerID].ws.send({
                        "type": "newPlayerJoinedLobby",
                        "newPlayerName": playersMap[newPlayerID].name
-                    },
-                    (error) => {
-                        leaveLobby(id)
                     })
                 } 
             )
@@ -78,10 +78,8 @@ wss.on('connection', (ws)=>{
             lobby.launchGame(data.playerID, (playerID) => {
                 let alive = true
                 playersMap[playerID].ws.send(JSON.stringify({
-                    "type": "startGame",
-                    "gameID": gameID
-                }),(error)=>{alive = false})
-                
+                    "type": "startGame"
+                }))
                 // Add player to the game
                 if(alive) {
                     gameInstance.addPlayer(gameID, {
@@ -120,6 +118,7 @@ function registerPlayer(name, ws) {
         "name": name,
         "ws": ws
     }
+    return id
 }
 
 /**
@@ -133,15 +132,13 @@ function leaveLobby(playerID) {
             playersMap[pID].ws.send(JSON.stringify({
                 "type": "playerLeave",
                 "playerLeavingName": playersMap[playerLeavingID]
-            }),(error)=>{
-                leaveLobby(playersMap[pID])
-            })
+            }))
         },
         // Owner leaving
         (pID)=>{
             playersMap[pID].ws.send(JSON.stringify({
                 "type": "lobbyDestroyed",
-            }),(error)=>{})
+            }))
             delete playersMap[pID]
         }
     )
