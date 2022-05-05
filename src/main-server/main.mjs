@@ -47,7 +47,7 @@ class Game {
      * @param {Object} data 
      * @param {WebSocket} ws 
      */
-    handleMessage(data, ws) {
+    handleMessage(data, id, ws) {
         
     }
 }

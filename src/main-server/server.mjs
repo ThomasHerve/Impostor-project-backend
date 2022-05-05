@@ -21,7 +21,6 @@ wss.on('connection', (ws)=>{
     let id = ""
     ws.on('close', ()=>{
         if(id in playersMap) {
-            console.log(`Player ${playersMap[id].name} leaved`)
             leaveLobby(id)
         } else {
             game.handleLeave(id)
@@ -30,52 +29,60 @@ wss.on('connection', (ws)=>{
     ws.on('message', (data)=>{
         data = JSON.parse(data)
         if(data.type === "createLobby") {
-            id = registerPlayer(data.playerName, ws)
-            lobby.createLobby(
-                id,
-                (lobbyID) => {
-                    ws.send(JSON.stringify({
-                        "type": "lobbyCreated",
-                        "lobbyID" : lobbyID,
-                    }))
-                }
-            )
+            if(id === "") {
+                id = registerPlayer(data.playerName, ws)
+                lobby.createLobby(
+                    id,
+                    (lobbyID) => {
+                        ws.send(JSON.stringify({
+                            "type": "lobbyCreated",
+                            "lobbyID" : lobbyID,
+                        }))
+                    }
+                )
+            }
         } else if(data.type === "joinLobby") {
-            let id = registerPlayer(data.playerName, ws)
-            lobby.joinLobby(
-                data.lobbyID,
-                id,
-                // Callback for the new player
-                (playerIDList) => {
-                    const playerArray = []
-                    playerIDList.forEach((id)=>{
-                        playerArray.push(playersMap[id].name)
-                    })
-                    ws.send(JSON.stringify({
-                        "type": "lobbyJoinSuccess",
-                        "playersID": playerArray 
-                    }))
-                },
-                // failure : lobby doesn't exist
-                () => {
-                    ws.send(JSON.stringify({
-                        "type": "nonExistingLobby"
-                    }))
-                },
-                // Callback for other players
-                (playerID, newPlayerID) => {
-                    playersMap[playerID].ws.send({
-                       "type": "newPlayerJoinedLobby",
-                       "newPlayerName": playersMap[newPlayerID].name
-                    })
-                } 
-            )
+            if(id === "") {
+                id = registerPlayer(data.playerName, ws)
+                lobby.joinLobby(
+                    data.lobbyID,
+                    id,
+                    // Callback for the new player
+                    (playerIDList) => {
+                        const playerArray = []
+                        playerIDList.forEach((id)=>{
+                            playerArray.push(playersMap[id].name)
+                        })
+                        ws.send(JSON.stringify({
+                            "type": "lobbyJoinSuccess",
+                            "playersName": playerArray 
+                        }))
+                    },
+                    // failure : lobby doesn't exist
+                    () => {
+                        ws.send(JSON.stringify({
+                            "type": "nonExistingLobby"
+                        }))
+                        id = ""
+                    },
+                    // Callback for other players
+                    (playerID, newPlayerID) => {
+                        playersMap[playerID].ws.send(JSON.stringify({
+                           "type": "newPlayerJoinedLobby",
+                           "newPlayerName": playersMap[newPlayerID].name
+                        }))
+                    } 
+                )
+            }
         } else if(data.type === "leaveLobby") {
-            leaveLobby(data.playerID)
+            if(id != "") {
+                leaveLobby(id)
+                id = ""
+            }
         } else if(data.type === "launchGame") {
             // Start game
             let gameInstance = game.createGame()
-            lobby.launchGame(data.playerID, (playerID) => {
+            lobby.launchGame(id, (playerID) => {
                 let alive = true
                 playersMap[playerID].ws.send(JSON.stringify({
                     "type": "startGame"
@@ -92,7 +99,7 @@ wss.on('connection', (ws)=>{
             })
             gameInstance.startGame()
         } else {
-            game.handleMessage(data, ws)
+            game.handleMessage(data, id,  ws)
         }
     })
 })
@@ -131,7 +138,7 @@ function leaveLobby(playerID) {
         (pID, playerLeavingID)=>{
             playersMap[pID].ws.send(JSON.stringify({
                 "type": "playerLeave",
-                "playerLeavingName": playersMap[playerLeavingID]
+                "playerLeavingName": playersMap[playerLeavingID].name
             }))
         },
         // Owner leaving
@@ -142,6 +149,12 @@ function leaveLobby(playerID) {
             delete playersMap[pID]
         }
     )
+    playersMap[playerID].ws.send(
+        JSON.stringify({
+            "type": "Aknowledge leaving"
+        })
+    )
+    console.log(`Player ${playersMap[playerID].name} leaved`)
     delete playersMap[playerID]
 }
 
@@ -150,8 +163,8 @@ function leaveLobby(playerID) {
  * Send type:
  * - createLobby (playerName)
  * - joinLobby (playerName, lobbyID)
- * - leaveLobby (id)
- * - launchGame (id)
+ * - leaveLobby ()
+ * - launchGame ()
  * 
  * Receive type
  * - playerLeave (playerLeavingName) 
