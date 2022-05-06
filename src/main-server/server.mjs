@@ -13,9 +13,7 @@ const wss = new WebSocketServer({
 /**
  * data contains : 
  * - type : Nature of the packet
- * - playerID : id of the player, delivered by the server at the beginning
  * - playerName : name of the player, choose by the player itself 
- * - lobbyID : id of the lobby to join
  */
 wss.on('connection', (ws)=>{
     let id = ""

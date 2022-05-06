@@ -10,16 +10,25 @@ const playerMap = {} // PlayerID -> GameID
 
 class Game {
 
-    constructor(endGameCallback) {
-        this.endGameCallback = endGameCallback // Function which unregister one player, to call on all player when game is over
+    /**
+     * The Game constructor
+     * @param {Object} parameters object containing the parameters  
+     * @param {*} endGameCallback Function which unregister one player, to call on all player when game is over
+     */
+    constructor(parameters, endGameCallback) {
+
+        // Attributes
+        this.endGameCallback = endGameCallback
+        this.parameters = parameters
         this.id = makeId(5)
+        this.players = {}
+
         while(this.id in gameMap) {
             this.id = makeId(5)
         }
         gameMap[this.id] = this
 
-        // Players
-        this.players = {}
+
     }
 
     // Lobby functions
@@ -38,24 +47,27 @@ class Game {
     addPlayer(player) {
         this.players[player.id] = {
             'name': player.name,
-            'ws': player.ws
+            'ws': player.ws,
+            'online': true // Will be passed to false if the connection with the client is broken
         }
+        playerMap[player.id]  = this.id
     }
 
 
     /**
      * Function to handle commands from users
      * @param {Object} data 
+     * @param {WebSocket} id
      * @param {WebSocket} ws 
      */
     handleMessage(data, id, ws) {
-        
+
     }
 
 
 
     // Game functions
-    
+
 
 
 }
@@ -77,7 +89,20 @@ function createGame (endGameCallback) {
     return new Game(endGameCallback)
 }
 
+/**
+ * Function to handle a player which broke the connection with the server
+ * @param {String} id the id of the player that broke the connection
+ */
 function handleLeave(id) {
+
+}
+
+/**
+ * Function to handle the reconnection of a player that leaved a game
+ * @param {String} id playerID 
+ * @param {*} ws the new websocket of the player
+ */
+function handleReconnect(id, ws) {
 
 }
 
@@ -86,7 +111,8 @@ export function GameInterface() {
     return {
         'createGame': createGame,
         'handleMessage': handleMessage,
-        'handleLeave':handleLeave
+        'handleLeave':handleLeave,
+        'handleReconnect':handleReconnect
     }
 }
 
