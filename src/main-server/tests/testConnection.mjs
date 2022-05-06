@@ -56,9 +56,14 @@ function question() {
             console.log("OK")
             ws.send(JSON.stringify({
                 "type": "leaveLobby",
+            }))
+        } else if(value.startsWith("Launch")) {
+            ws.send(JSON.stringify({
+                "type": "launchGame",
             }))    
-        } else {
+        }else {
             console.log("Unknown command")
+            question()
         }
     });
 }

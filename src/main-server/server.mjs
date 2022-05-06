@@ -29,7 +29,12 @@ wss.on('connection', (ws)=>{
     ws.on('message', (data)=>{
         data = JSON.parse(data)
         if(data.type === "createLobby") {
-            if(id === "") {
+            if(data.playerName == undefined) {
+                ws.send(JSON.stringify({
+                    "type": "invalidPacket",
+                }))
+            }
+            else if(id === "") {
                 id = registerPlayer(data.playerName, ws)
                 lobby.createLobby(
                     id,
@@ -40,9 +45,18 @@ wss.on('connection', (ws)=>{
                         }))
                     }
                 )
+            } else {
+                ws.send(JSON.stringify({
+                    "type": "alreadyInLobby",
+                }))
             }
         } else if(data.type === "joinLobby") {
-            if(id === "") {
+            if(data.playerName == undefined) {
+                ws.send(JSON.stringify({
+                    "type": "invalidPacket",
+                }))
+            }
+            else if(id === "") {
                 id = registerPlayer(data.playerName, ws)
                 lobby.joinLobby(
                     data.lobbyID,
@@ -73,31 +87,48 @@ wss.on('connection', (ws)=>{
                         }))
                     } 
                 )
+            } else {
+                ws.send(JSON.stringify({
+                    "type": "alreadyInLobby",
+                }))
             }
         } else if(data.type === "leaveLobby") {
             if(id != "") {
                 leaveLobby(id)
                 id = ""
             }
-        } else if(data.type === "launchGame") {
-            // Start game
-            let gameInstance = game.createGame()
-            lobby.launchGame(id, (playerID) => {
-                let alive = true
-                playersMap[playerID].ws.send(JSON.stringify({
-                    "type": "startGame"
+        } else if(data.type === "launchGame") {       
+            if(data.numberOfImpostors == undefined) {
+                ws.send(JSON.stringify({
+                    "type": "invalidPacket",
                 }))
-                // Add player to the game
-                if(alive) {
-                    gameInstance.addPlayer(gameID, {
+            } else {
+                let gameInstance = undefined
+                let parameters = {
+                    "numberOfImpostors": data.numberOfImpostors 
+                }
+                lobby.launchGame(id,
+                    () => {
+                        // Start game
+                        gameInstance = game.createGame(parameters, unregisterPlayer)
+                    }, 
+                    (playerID) => {
+                    playersMap[playerID].ws.send(JSON.stringify({
+                        "type": "startGame"
+                    }))
+                    // Add player to the game
+                    gameInstance.addPlayer({
                         'id': playerID,
                         'name': playersMap[playerID].name,
                         'ws': playersMap[playerID].ws
                     })
+                    
+                    delete playersMap[playerID]
+                })
+                if(gameInstance != undefined) {
+                    gameInstance.startGame()
                 }
-                delete playersMap[playerID]
-            })
-            gameInstance.startGame()
+            }
         } else {
             game.handleMessage(data, id,  ws)
         }
@@ -106,7 +137,8 @@ wss.on('connection', (ws)=>{
 
 // ********************* DATA STRUCTURES ********************
 
-const playersMap = {} // ID -> {name, websocket}
+const playersMap = {} // ID -> {name, websocket}, only the players in lobby
+const playersIDSet = new Set() // All the player, even the ones in game, to warranty the unicity have the ids
 
 // *********************     FUNCTIONS   ********************
 
@@ -118,14 +150,22 @@ const playersMap = {} // ID -> {name, websocket}
  */
 function registerPlayer(name, ws) {
     let id = lobby.makeId(5)
-    while(id in playersMap) {
+    while(playersIDSet.has(id)) {
         id = lobby.makeId(5)
     }
+    playersIDSet.add(id)
     playersMap[id] = {
         "name": name,
         "ws": ws
     }
     return id
+}
+
+
+function unregisterPlayer(id) {
+    if(playersIDSet.has(id)) {
+        playersIDSet.delete(id)
+    }
 }
 
 /**
@@ -147,6 +187,7 @@ function leaveLobby(playerID) {
                 "type": "lobbyDestroyed",
             }))
             delete playersMap[pID]
+            unregisterPlayer(pID)
         }
     )
     playersMap[playerID].ws.send(
@@ -156,6 +197,7 @@ function leaveLobby(playerID) {
     )
     console.log(`Player ${playersMap[playerID].name} leaved`)
     delete playersMap[playerID]
+    unregisterPlayer(playerID)
 }
 
 /**
@@ -164,7 +206,7 @@ function leaveLobby(playerID) {
  * - createLobby (playerName)
  * - joinLobby (playerName, lobbyID)
  * - leaveLobby ()
- * - launchGame ()
+ * - launchGame (numberOfImpostors)
  * 
  * Receive type
  * - playerLeave (playerLeavingName) 

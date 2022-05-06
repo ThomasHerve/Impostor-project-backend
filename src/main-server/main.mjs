@@ -4,13 +4,14 @@ const makeId = Lobby().makeId
 // ********************* DATA STRUCTURES ********************
 
 const gameMap = {} // GameID -> Game
-
+const playerMap = {} // PlayerID -> GameID
 
 // ********************* PUBLIC CLASSES *******************
 
 class Game {
 
-    constructor() {
+    constructor(endGameCallback) {
+        this.endGameCallback = endGameCallback // Function which unregister one player, to call on all player when game is over
         this.id = makeId(5)
         while(this.id in gameMap) {
             this.id = makeId(5)
@@ -21,7 +22,7 @@ class Game {
         this.players = {}
     }
 
-    // Initialization functions
+    // Lobby functions
 
     /**
      * Function to start the Game
@@ -50,6 +51,13 @@ class Game {
     handleMessage(data, id, ws) {
         
     }
+
+
+
+    // Game functions
+    
+
+
 }
 
 
@@ -62,10 +70,11 @@ function handleMessage(data, ws) {
 
 /**
  * Function to create a new game
+ * @param {Function} endGameCallback
  * @returns {Game}
  */
-function createGame () {
-    return new Game()
+function createGame (endGameCallback) {
+    return new Game(endGameCallback)
 }
 
 function handleLeave(id) {

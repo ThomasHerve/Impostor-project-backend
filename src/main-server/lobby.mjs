@@ -1,6 +1,6 @@
 // ********************* DATA STRUCTURES ********************
 
-const minPlayers = 4
+const minPlayers = 2
 const lobbyMap = {} // ID -> player[]
 const ownerMap = {} // player -> ID
 const joinerMap = {} // player -> ID
@@ -77,11 +77,13 @@ function leaveLobby(player, notifyPlayerFunction, notifyPlayerDisbandFunction) {
 /**
  * Function to call to launch a lobby
  * @param {Object} player the owner of the lobby launching the game
- * @param {Function} launchFunction function which will be called to launch the game
+ * @param {Function} successFunction function which will be called one time if success
+ * @param {Function} launchFunctionOnePlayer function which will be called on each player to launch the game
  */
-function launchGame(player, launchFunction) {
+function launchGame(player, successFunction, launchFunction) {
     if(player in ownerMap && lobbyMap[ownerMap[player]].length >= minPlayers) {
         let idLobby = ownerMap[player]
+        successFunction()
         lobbyMap[idLobby].forEach((p)=>{
             launchFunction(p)
             if(p != player) {
