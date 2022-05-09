@@ -1,6 +1,17 @@
 import { Lobby } from './lobby.mjs'
 const makeId = Lobby().makeId
 
+
+/**
+ * 
+ * PARAMETERS OF A GAME CURRENTLY AVAILABLES:
+ * numberOfImpostors (Mandatory): the number of impostors 
+ * 
+ * 
+ */
+
+
+
 // ********************* DATA STRUCTURES ********************
 
 const gameMap = {} // GameID -> Game
@@ -12,7 +23,7 @@ class Game {
 
     /**
      * The Game constructor
-     * @param {Object} parameters object containing the parameters  
+     * @param {Object} parameters object containing the parameters (See above for more details)
      * @param {*} endGameCallback Function which unregister one player, to call on all player when game is over
      */
     constructor(parameters, endGameCallback) {
@@ -31,15 +42,7 @@ class Game {
 
     }
 
-    // Lobby functions
-
-    /**
-     * Function to start the Game
-     */
-    startGame() {
-        // TODO
-    }
-
+    // External functions, Which means they are called by the outside (lobby management, player disconnecting/reconnecting)
     /**
      * Add a player to the game
      * @param {Object} player 
@@ -52,7 +55,22 @@ class Game {
         }
         playerMap[player.id]  = this.id
     }
+    
+    /**
+     * Handle a player of this particular game leaving
+     * @param {String} playerID 
+     */
+    playerLeaved(playerID) {
+        this.players[playerID].online = false
+    }
 
+    /**
+     * handle the reconnection of a player
+     * @param {String} playerID 
+     */
+    playerReconnect(playerID) {
+        this.players[playerID].online = true
+    }
 
     /**
      * Function to handle commands from users
@@ -61,15 +79,84 @@ class Game {
      * @param {WebSocket} ws 
      */
     handleMessage(data, id, ws) {
+        
+    }
 
+    // Game functions, called from this class (excepting startGame)
+    /**
+     * Function to start the Game
+     */
+    startGame() {
+        // Players are already notified that the game has began
+        this.parametrizePlayers()
+        this.selectImpostors()
     }
 
 
+    /**
+     * populate the missing fields in players
+     */
+    parametrizePlayers() {
+        for(let playerID in this.players) {
+            this.players[playerID]["status"] = {
+                'alive': true,
+                'impostor': false,
+                'tasks': []
+            }
+        }
+    }
 
-    // Game functions
+    /**
+     * Function which design the impostors among the players
+     */
+    selectImpostors() {
+        // Security, you cannot have more than 25% of the players as impostor
+        let playersID = Object.keys(this.players)
+        let numberOfImpostors = Math.max(this.parameters.numberOfImpostors, Math.floor(playersID.length / 4))
 
+        // Security against any possible infinite loop
+        let maxRetry = 10000
 
+        while(numberOfImpostors > 0) {
+            let randomPlayer = playersID[Math.floor(Math.random() * playersID.length)]
+            if(!this.players[playersID].status.impostor) {
+                this.players[playersID].status.impostor = true
+                numberOfImpostors--
+            } else {
+                maxRetry--
+                if(maxRetry === 0) {
+                    console.log(`Game ${this.id} was stuck in an infinite loop for impostors selection`)
+                    this.end()
+                }
+            }
+        }
+    }
 
+    notifyPlayersRoles() {
+        for(let playerID in this.players) {
+            let role = "crewmate"
+            if(this.players[playerID].status.impostor) {
+                role = "impostor"
+            }
+            this.players[playerID].ws.send(JSON.stringify({
+                "type": "playerRole",
+                "role": role
+            }))
+        }
+    }
+
+    // End the game
+    /**
+     * Method to call to end this game
+     */
+    end() {
+        for(let playerID in this.players) {
+            delete playerMap[playerID]
+            this.endGameCallback(playerID)
+        }
+        delete gameMap[this.id]
+        console.log(`Game ${this.id} ended`)
+    }
 }
 
 
@@ -94,16 +181,16 @@ function createGame (endGameCallback) {
  * @param {String} id the id of the player that broke the connection
  */
 function handleLeave(id) {
-
+    gameMap[playerMap[id]].playerLeaved(id)
 }
 
 /**
  * Function to handle the reconnection of a player that leaved a game
- * @param {String} id playerID 
+ * @param {String} id playerID
  * @param {*} ws the new websocket of the player
  */
 function handleReconnect(id, ws) {
-
+    gameMap[playerMap[id]].playerReconnect(id)
 }
 
 
@@ -116,3 +203,10 @@ export function GameInterface() {
     }
 }
 
+/**
+ * 
+ * Send type:
+ * 
+ * Receive type
+ * - playerRole (role) 
+ */

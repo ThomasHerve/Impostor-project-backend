@@ -159,7 +159,10 @@ function registerPlayer(name, ws) {
     return id
 }
 
-
+/**
+ * Function called by a game to unregister a player
+ * @param {String} id 
+ */
 function unregisterPlayer(id) {
     if(playersIDSet.has(id)) {
         playersIDSet.delete(id)

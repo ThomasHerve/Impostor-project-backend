@@ -1,6 +1,6 @@
 // ********************* DATA STRUCTURES ********************
 
-const minPlayers = 2
+const minPlayers = 4
 const lobbyMap = {} // ID -> player[]
 const ownerMap = {} // player -> ID
 const joinerMap = {} // player -> ID
