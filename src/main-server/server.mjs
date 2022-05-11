@@ -1,6 +1,6 @@
 import { WebSocketServer } from 'ws';
 import { Lobby } from './lobby.mjs'
-import { GameInterface } from './main.mjs'
+import { GameInterface } from '../game-server/main.mjs'
 const lobby = Lobby()
 const game = GameInterface()
 

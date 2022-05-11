@@ -1,4 +1,6 @@
-import { Lobby } from './lobby.mjs'
+import { Lobby } from '../main-server/lobby.mjs'
+import { Player } from './player.mjs'
+import {Task} from './task.mjs'
 const makeId = Lobby().makeId
 
 
@@ -27,7 +29,6 @@ class Game {
      * @param {*} endGameCallback Function which unregister one player, to call on all player when game is over
      */
     constructor(parameters, endGameCallback) {
-
         // Attributes
         this.endGameCallback = endGameCallback
         this.parameters = parameters
@@ -38,8 +39,6 @@ class Game {
             this.id = makeId(5)
         }
         gameMap[this.id] = this
-
-
     }
 
     // External functions, Which means they are called by the outside (lobby management, player disconnecting/reconnecting)
@@ -48,11 +47,7 @@ class Game {
      * @param {Object} player 
      */
     addPlayer(player) {
-        this.players[player.id] = {
-            'name': player.name,
-            'ws': player.ws,
-            'online': true // Will be passed to false if the connection with the client is broken
-        }
+        this.players[player.id] = new Player(player.name, player.ws, player.id)
         playerMap[player.id]  = this.id
     }
     
@@ -88,22 +83,13 @@ class Game {
      */
     startGame() {
         // Players are already notified that the game has began
-        this.parametrizePlayers()
+        // We select the impostors
         this.selectImpostors()
-    }
+        // We notify the players of their roles
+        this.notifyPlayersRoles()
+        // We populate the tasks
+        this.giveTasks()
 
-
-    /**
-     * populate the missing fields in players
-     */
-    parametrizePlayers() {
-        for(let playerID in this.players) {
-            this.players[playerID]["status"] = {
-                'alive': true,
-                'impostor': false,
-                'tasks': []
-            }
-        }
     }
 
     /**
@@ -119,8 +105,8 @@ class Game {
 
         while(numberOfImpostors > 0) {
             let randomPlayer = playersID[Math.floor(Math.random() * playersID.length)]
-            if(!this.players[playersID].status.impostor) {
-                this.players[playersID].status.impostor = true
+            if(!this.players[randomPlayer].impostor) {
+                this.players[randomPlayer].impostor = true
                 numberOfImpostors--
             } else {
                 maxRetry--
@@ -133,15 +119,14 @@ class Game {
     }
 
     notifyPlayersRoles() {
-        for(let playerID in this.players) {
-            let role = "crewmate"
-            if(this.players[playerID].status.impostor) {
-                role = "impostor"
-            }
-            this.players[playerID].ws.send(JSON.stringify({
-                "type": "playerRole",
-                "role": role
-            }))
+        for(let player in this.players) {
+            player.sendRole()
+        }
+    }
+
+    giveTasks() {
+        for(let player in this.players) {
+            player.generateTasks()
         }
     }
 
@@ -150,9 +135,9 @@ class Game {
      * Method to call to end this game
      */
     end() {
-        for(let playerID in this.players) {
-            delete playerMap[playerID]
-            this.endGameCallback(playerID)
+        for(let player in this.players) {
+            delete playerMap[player.id]
+            this.endGameCallback(player.id)
         }
         delete gameMap[this.id]
         console.log(`Game ${this.id} ended`)
