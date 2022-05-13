@@ -214,6 +214,6 @@ function leaveLobby(playerID) {
  * - lobbyDestroyed ()
  * - lobbyCreated (lobbyID)
  * - nonExistingLobby ()
- * - lobbyJoinSuccess (playersID)
+ * - lobbyJoinSuccess (playersName)
  * - newPlayerJoinedLobby (newPlayerName)
  */
