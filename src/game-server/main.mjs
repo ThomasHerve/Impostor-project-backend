@@ -48,7 +48,7 @@ class Game {
      */
     addPlayer(player) {
         this.players[player.id] = new Player(player.name, player.ws, player.id)
-        playerMap[player.id]  = this.id
+        playerMap[player.id] = this.id
     }
     
     /**
@@ -63,8 +63,9 @@ class Game {
      * handle the reconnection of a player
      * @param {String} playerID 
      */
-    playerReconnect(playerID) {
+    playerReconnect(playerID, ws) {
         this.players[playerID].online = true
+        this.players[playerID].ws = ws
     }
 
     /**
@@ -166,7 +167,9 @@ function createGame (endGameCallback) {
  * @param {String} id the id of the player that broke the connection
  */
 function handleLeave(id) {
-    gameMap[playerMap[id]].playerLeaved(id)
+    if(id in playerMap && playerMap[id] in gameMap) {
+        gameMap[playerMap[id]].playerLeaved(id)
+    }
 }
 
 /**
@@ -175,7 +178,9 @@ function handleLeave(id) {
  * @param {*} ws the new websocket of the player
  */
 function handleReconnect(id, ws) {
-    gameMap[playerMap[id]].playerReconnect(id)
+    if(id in playerMap && playerMap[id] in gameMap) {
+        gameMap[playerMap[id]].playerReconnect(id, ws)
+    }
 }
 
 function checkGameValid(parameters, ownerID, playersID) {
