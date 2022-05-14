@@ -72,7 +72,7 @@ wss.on('connection', (ws)=>{
                     // Callback for other players
                     (playerID) => {
                         playersMap[playerID].ws.send(JSON.stringify({
-                           "type": "newPlayerJoinedLobby",
+                           "type": "playerJoined",
                            "players": getNames(lobby.allPlayerOfLobby(playerID))
                         }))
                     } 
@@ -193,7 +193,7 @@ function leaveLobby(playerID) {
         // Non owner leaving
         (pID)=>{
             playersMap[pID].ws.send(JSON.stringify({
-                "type": "playerLeave",
+                "type": "playerLeft",
                 "players": names
             }))
         },
@@ -229,10 +229,10 @@ function getNames(playersID) {
  * - changeName (playerName)
  * 
  * Receive type
- * - playerLeave (playerLeavingName) 
+ * - playerLeft (playerLeavingName) 
  * - lobbyDestroyed ()
  * - lobbyCreated (lobbyID)
  * - nonExistingLobby ()
  * - lobbyJoinSuccess (playersName)
- * - newPlayerJoinedLobby (newPlayerName)
+ * - playerJoined (players)
  */
