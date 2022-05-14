@@ -129,6 +129,13 @@ function allPlayerOfLobby(player) {
     });
 }
 
+/**
+ * Is the player an owner ?
+ * @param {String} player 
+ */
+function isOwner(player) {
+    return player in ownerMap
+}
 
 /**
  * Function to generate a random ID
@@ -164,6 +171,7 @@ export function Lobby() {
         'makeId': makeId,
         'callbackAllPlayers': callbackAllPlayers,
         'allPlayerOfLobby': allPlayerOfLobby,
+        'isOwner': isOwner,
 
         // Expose this data structures for testing purposes
         'lobbyMap': lobbyMap,

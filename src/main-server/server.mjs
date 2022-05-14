@@ -105,6 +105,12 @@ wss.on('connection', (ws)=>{
                     "type": "invalidPacket",
                 }))
             } else {
+                if(!lobby.isOwner(id) || !game.checkGameValid(parameters, id, lobby.allPlayerOfLobby(id))) {
+                    ws.send(JSON.stringify({
+                        "type": "invalidLobby",
+                    }))
+                    return
+                }
                 let gameInstance = undefined
                 let parameters = {
                     "numberOfImpostors": data.numberOfImpostors 

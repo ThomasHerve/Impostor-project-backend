@@ -98,7 +98,7 @@ class Game {
     selectImpostors() {
         // Security, you cannot have more than 25% of the players as impostor
         let playersID = Object.keys(this.players)
-        let numberOfImpostors = Math.max(this.parameters.numberOfImpostors, Math.floor(playersID.length / 4))
+        let numberOfImpostors = Math.min(this.parameters.numberOfImpostors, Math.floor(playersID.length / 4))
 
         // Security against any possible infinite loop
         let maxRetry = 10000
@@ -178,13 +178,24 @@ function handleReconnect(id, ws) {
     gameMap[playerMap[id]].playerReconnect(id)
 }
 
+function checkGameValid(parameters, ownerID, playersID) {
+    let n = playersID.length + 1
+    if(n < 4) {
+        return false
+    }
+    if(parameters.numberOfImpostors < 1) {
+        return false
+    }
+    return true
+}
 
 export function GameInterface() {
     return {
         'createGame': createGame,
         'handleMessage': handleMessage,
         'handleLeave':handleLeave,
-        'handleReconnect':handleReconnect
+        'handleReconnect':handleReconnect,
+        'checkGameValid': checkGameValid
     }
 }
 
