@@ -14,9 +14,9 @@ const joinerMap = {} // player -> ID
  */
 function createLobby(player, successFunction) {
     let idLobby = generateLobbyID()
-    successFunction(idLobby)
     lobbyMap[idLobby] = [player]
     ownerMap[player] = idLobby
+    successFunction(idLobby)
 }
 
 /**
@@ -31,14 +31,14 @@ function joinLobby(idLobby, player, successFunction, failureFunction, newPlayerE
     if(!(idLobby in lobbyMap)) {
         failureFunction()
     } else {
+        lobbyMap[idLobby].push(player)
+        joinerMap[player] = idLobby
         lobbyMap[idLobby].forEach((p)=>{
             // p = player to send the callback
             // player = player data to send
-            newPlayerEnterFunction(p, player)
+            newPlayerEnterFunction(p)
         })
         successFunction(lobbyMap[idLobby])
-        lobbyMap[idLobby].push(player)
-        joinerMap[player] = idLobby
     }
 }
 
@@ -63,7 +63,7 @@ function leaveLobby(player, notifyPlayerFunction, notifyPlayerDisbandFunction) {
     } else { // Player case
         lobbyMap[joinerMap[player]].forEach((p)=>{
             if(p != player) {
-                notifyPlayerFunction(p, player)
+                notifyPlayerFunction(p)
             }
         })
         let index = lobbyMap[joinerMap[player]].indexOf(player)
@@ -94,6 +94,41 @@ function launchGame(player, successFunction, launchFunction) {
         delete lobbyMap[idLobby]
     }
 }
+
+/**
+ * Function to call on every player of a lobby
+ * @param {id} player the player
+ * @param {Function} callback
+ */
+function callbackAllPlayers(player, callback) {
+    if(player in ownerMap) {
+        lobbyMap[ownerMap[player]].forEach((p)=>{
+            callback(p)
+        })
+    } else {
+        lobbyMap[joinerMap[player]].forEach((p)=>{
+            callback(p)
+        })
+    }
+}
+
+/**
+ * get list of players IDsm exept itself
+ * @param {id} player 
+ * @returns 
+ */
+function allPlayerOfLobby(player) {
+    let p = []
+    if(player in ownerMap) {
+        p = lobbyMap[ownerMap[player]]
+    } else {
+        p = lobbyMap[joinerMap[player]]
+    }
+    return p.filter(item => {
+        return item != player
+    });
+}
+
 
 /**
  * Function to generate a random ID
@@ -127,6 +162,8 @@ export function Lobby() {
         'leaveLobby': leaveLobby,
         'launchGame': launchGame,
         'makeId': makeId,
+        'callbackAllPlayers': callbackAllPlayers,
+        'allPlayerOfLobby': allPlayerOfLobby,
 
         // Expose this data structures for testing purposes
         'lobbyMap': lobbyMap,

@@ -61,7 +61,16 @@ function question() {
             ws.send(JSON.stringify({
                 "type": "launchGame",
             }))    
-        }else {
+        } else if(value.startsWith("ChangeName")) {
+            ws.send(JSON.stringify({
+                "type": "changeName",
+                "playerName": value.split(" ")[1]
+            }))
+            question() 
+        } else if("exit") {
+            ws.close()
+        } 
+        else {
             console.log("Unknown command")
             question()
         }

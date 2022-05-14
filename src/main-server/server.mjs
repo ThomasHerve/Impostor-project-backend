@@ -27,13 +27,8 @@ wss.on('connection', (ws)=>{
     ws.on('message', (data)=>{
         data = JSON.parse(data)
         if(data.type === "createLobby") {
-            if(data.playerName == undefined) {
-                ws.send(JSON.stringify({
-                    "type": "invalidPacket",
-                }))
-            }
-            else if(id === "") {
-                id = registerPlayer(data.playerName, ws)
+            if(id === "") {
+                id = registerPlayer(ws)
                 lobby.createLobby(
                     id,
                     (lobbyID) => {
@@ -49,25 +44,22 @@ wss.on('connection', (ws)=>{
                 }))
             }
         } else if(data.type === "joinLobby") {
-            if(data.playerName == undefined) {
-                ws.send(JSON.stringify({
-                    "type": "invalidPacket",
-                }))
-            }
-            else if(id === "") {
-                id = registerPlayer(data.playerName, ws)
+            if(id === "") {
+                id = registerPlayer(ws)
                 lobby.joinLobby(
                     data.lobbyID,
                     id,
                     // Callback for the new player
                     (playerIDList) => {
                         const playerArray = []
-                        playerIDList.forEach((id)=>{
-                            playerArray.push(playersMap[id].name)
+                        playerIDList.forEach((i)=>{
+                            if(i != id) {
+                                playerArray.push(playersMap[i].name)
+                            }
                         })
                         ws.send(JSON.stringify({
                             "type": "lobbyJoinSuccess",
-                            "playersName": playerArray 
+                            "players": playerArray 
                         }))
                     },
                     // failure : lobby doesn't exist
@@ -78,10 +70,10 @@ wss.on('connection', (ws)=>{
                         id = ""
                     },
                     // Callback for other players
-                    (playerID, newPlayerID) => {
+                    (playerID) => {
                         playersMap[playerID].ws.send(JSON.stringify({
                            "type": "newPlayerJoinedLobby",
-                           "newPlayerName": playersMap[newPlayerID].name
+                           "players": getNames(lobby.allPlayerOfLobby(playerID))
                         }))
                     } 
                 )
@@ -94,6 +86,18 @@ wss.on('connection', (ws)=>{
             if(id != "") {
                 leaveLobby(id)
                 id = ""
+            }
+        } else if(data.type === "changeName") {
+            if(id != "" && data.playerName != undefined) {
+                playersMap[id].name = data.playerName
+                lobby.callbackAllPlayers(id, (p)=>{
+                    if(p != id) {
+                        playersMap[p].ws.send(JSON.stringify({
+                            "type": "changeName",
+                            "players": getNames(lobby.allPlayerOfLobby(p))
+                        }))
+                    }
+                })
             }
         } else if(data.type === "launchGame") {       
             if(data.numberOfImpostors == undefined) {
@@ -146,14 +150,14 @@ const playersIDSet = new Set() // All the player, even the ones in game, to warr
  * @param {WebSocket} ws the websocket of the player
  * @returns {String} the id of the player
  */
-function registerPlayer(name, ws) {
+function registerPlayer(ws) {
     let id = lobby.makeId(5)
     while(playersIDSet.has(id)) {
         id = lobby.makeId(5)
     }
     playersIDSet.add(id)
     playersMap[id] = {
-        "name": name,
+        "name": "Player",
         "ws": ws
     }
     return id
@@ -174,12 +178,17 @@ function unregisterPlayer(id) {
  * @param {String} playerID the player id 
  */
 function leaveLobby(playerID) {
+    let ids = lobby.allPlayerOfLobby(playerID)
+    ids = ids.filter(item => {
+        return item != playerID
+    });
+    let names = getNames(ids)
     lobby.leaveLobby(playerID,
         // Non owner leaving
-        (pID, playerLeavingID)=>{
+        (pID)=>{
             playersMap[pID].ws.send(JSON.stringify({
                 "type": "playerLeave",
-                "playerLeavingName": playersMap[playerLeavingID].name
+                "players": names
             }))
         },
         // Owner leaving
@@ -191,23 +200,27 @@ function leaveLobby(playerID) {
             unregisterPlayer(pID)
         }
     )
-    playersMap[playerID].ws.send(
-        JSON.stringify({
-            "type": "Aknowledge leaving"
-        })
-    )
     console.log(`Player ${playersMap[playerID].name} leaved`)
     delete playersMap[playerID]
     unregisterPlayer(playerID)
 }
 
+function getNames(playersID) {
+    let ret = []
+    playersID.forEach((item)=>{
+        ret.push(playersMap[item].name)
+    })
+    return ret
+}
+
 /**
  * 
  * Send type:
- * - createLobby (playerName)
- * - joinLobby (playerName, lobbyID)
+ * - createLobby ()
+ * - joinLobby (lobbyID)
  * - leaveLobby ()
  * - launchGame (numberOfImpostors)
+ * - changeName (playerName)
  * 
  * Receive type
  * - playerLeave (playerLeavingName) 
