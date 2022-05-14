@@ -40,7 +40,7 @@ function question() {
             ws.send(JSON.stringify({
                 "type": "createLobby",
                 "playerName": "testPlayerCreate"
-            }))    
+            }))
         } else if(value.startsWith("Join")) {
             if(value.split(" ").length < 2) {
                 console.log("Error: need a room id")
