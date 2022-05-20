@@ -100,7 +100,7 @@ wss.on('connection', (ws)=>{
                 })
             }
         } else if(data.type === "launchGame") {       
-            if(data.numberOfImpostors == undefined) {
+            if(data.numberOfImpostors == undefined || data.tasks == undefined) {
                 ws.send(JSON.stringify({
                     "type": "invalidPacket",
                 }))
@@ -113,7 +113,8 @@ wss.on('connection', (ws)=>{
                 }
                 let gameInstance = undefined
                 let parameters = {
-                    "numberOfImpostors": data.numberOfImpostors 
+                    "numberOfImpostors": data.numberOfImpostors,
+                    "tasks": data.tasks
                 }
                 lobby.launchGame(id,
                     () => {

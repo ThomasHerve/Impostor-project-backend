@@ -34,6 +34,7 @@ class Game {
         this.parameters = parameters
         this.id = makeId(5)
         this.players = {}
+        this.tasks = this.createTasks(parameters)
 
         while(this.id in gameMap) {
             this.id = makeId(5)
@@ -125,9 +126,17 @@ class Game {
         }
     }
 
+    createTasks(parameters) {
+        let tasks = []
+        parameters.tasks.forEach((taks_data)=>{
+            tasks.push(new Task(taks_data.id, taks_data.name))
+        })
+        return tasks
+    }
+
     giveTasks() {
         for(let player in this.players) {
-            player.generateTasks()
+            player.generateTasks(this.tasks)
         }
     }
 
@@ -191,6 +200,16 @@ function checkGameValid(parameters, ownerID, playersID) {
     if(parameters.numberOfImpostors < 1) {
         return false
     }
+    // At least 4 tasks
+    if(parameters.tasks.length < 4) {
+        return false
+    }
+    // Check tasks are correct
+    parameters.tasks.forEach((task)=>{
+        if(task.length != 2) {
+            return false
+        }
+    })
     return true
 }
 

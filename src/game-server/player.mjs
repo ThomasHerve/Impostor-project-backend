@@ -40,12 +40,9 @@ export class Player {
 
     /**
      * Function which populate the tasks of the player
+     * @param {Task[]} all tasks available
      */
-    generateTasks() {
+    generateTasks(tasks) {
         
     }
-
-
-
 }
-
