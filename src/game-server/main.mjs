@@ -8,7 +8,7 @@ const makeId = Lobby().makeId
  * 
  * PARAMETERS OF A GAME CURRENTLY AVAILABLES:
  * numberOfImpostors (Mandatory): the number of impostors 
- * tasks (Mandatory): the tasks, Array<ID, NAME>
+ * tasks (Mandatory): the tasks, Array<id, name, nature> (nature: task / sabotage)
  * numTasks (Optional): number of tasks per crewmate, 10 by default
  */
 
@@ -74,7 +74,10 @@ class Game {
      * @param {WebSocket} id
      */
     handleMessage(data, id) {
-        
+        let ws = this.players[id].ws
+
+
+
     }
 
     // Game functions, called from this class (excepting startGame)
@@ -134,7 +137,7 @@ class Game {
     createTasks(parameters) {
         let tasks = []
         parameters.tasks.forEach((taks_data)=>{
-            tasks.push(new Task(taks_data.id, taks_data.name))
+            tasks.push(new Task(taks_data.id, taks_data.name, taks_data.nature))
         })
         return tasks
     }
@@ -175,7 +178,7 @@ class Game {
 // Entrypoint for server
 function handleMessage(data, id) {
     if(data.gameID != undefined && data.gameID in gameMap) {
-        gameMap[data].handleMessage(data, id)
+        gameMap[data.gameID].handleMessage(data, id)
     }
 }
 
@@ -184,7 +187,7 @@ function handleMessage(data, id) {
  * @param {Function} endGameCallback
  * @returns {Game}
  */
-function createGame (endGameCallback) {
+function createGame(endGameCallback) {
     return new Game(endGameCallback)
 }
 
@@ -243,6 +246,9 @@ export function GameInterface() {
 /**
  * 
  * Send type:
+ * - validTask (id)
+ * - 
+ * 
  * 
  * Receive type
  * - playerRole (role) 

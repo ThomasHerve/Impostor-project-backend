@@ -2,7 +2,6 @@ import {Task} from './task.mjs'
 
 export class Player {
 
-
     /**
      * @param {String} name 
      * @param {WebSocket} ws 
@@ -15,6 +14,7 @@ export class Player {
         this.online = true // Is the player online ?
 
         this.tasks =[]
+        this.tasksSabotage = []
         this.numTasks = 0
 
         // Gameplay related attributes
@@ -33,15 +33,44 @@ export class Player {
      * @param {number} numTasks the number of tasks to do
      */
      generateTasks(tasks, numTasks) {
+        this.tasksSabotage = []
+        let tasksNormal = []
+        tasks.forEach((task)=>{
+            if(task.nature == "sabotage") {
+                this.tasksSabotage.push(task)
+            } else {
+                tasksNormal.push(task)
+            }
+        })
         this.numTasks = numTasks
         let lastTask = undefined
         for(let i = 0; i < this.numTasks; i++) {
-            let randomtask = tasks[Math.floor(Math.random() * tasks.length)]
+            let randomtask = tasksNormal[Math.floor(Math.random() * tasksNormal.length)]
             while(randomtask == lastTask) {
-                randomtask = tasks[Math.floor(Math.random() * tasks.length)]
+                randomtask = tasksNormal[Math.floor(Math.random() * tasksNormal.length)]
             }
             this.tasks.push(randomtask)
             lastTask = randomtask
+        }
+    }
+
+    /**
+     * Method to hadle a task done by the player
+     * @param {number} taskID
+     */
+    handleTaskDone(taskID) {
+        if(this.tasks.length > 0 && this.tasks[0].id == taskID) {
+            
+            return
+        } 
+        let idInSabotage = false
+        this.tasksSabotage.forEach((task)=>{
+            if(task.id == taskID) {
+                idInSabotage = true
+            }
+        })
+        if(idInSabotage) {
+            // TODO HANDLE SABOTAGE
         }
     }
 
