@@ -73,9 +73,8 @@ class Game {
      * Function to handle commands from users
      * @param {Object} data 
      * @param {WebSocket} id
-     * @param {WebSocket} ws 
      */
-    handleMessage(data, id, ws) {
+    handleMessage(data, id) {
         
     }
 
@@ -156,9 +155,9 @@ class Game {
 
 
 // Entrypoint for server
-function handleMessage(data, ws) {
+function handleMessage(data, id) {
     if(data.gameID != undefined && data.gameID in gameMap) {
-        gameMap[data].handleMessage(data, ws)
+        gameMap[data].handleMessage(data, id)
     }
 }
 

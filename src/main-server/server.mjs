@@ -139,7 +139,7 @@ wss.on('connection', (ws)=>{
                 }
             }
         } else {
-            game.handleMessage(data, id,  ws)
+            game.handleMessage(data, id)
         }
     })
 })
