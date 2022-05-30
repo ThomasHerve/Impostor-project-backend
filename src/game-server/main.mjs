@@ -8,11 +8,9 @@ const makeId = Lobby().makeId
  * 
  * PARAMETERS OF A GAME CURRENTLY AVAILABLES:
  * numberOfImpostors (Mandatory): the number of impostors 
- * 
- * 
+ * tasks (Mandatory): the tasks, Array<ID, NAME>
+ * numTasks (Optional): number of tasks per crewmate, 10 by default
  */
-
-
 
 // ********************* DATA STRUCTURES ********************
 
@@ -35,6 +33,7 @@ class Game {
         this.id = makeId(5)
         this.players = {}
         this.tasks = this.createTasks(parameters)
+        this.numTasks = Number.isFinite(parameters["numTasks"]) ? parameters["numTasks"] : 10
 
         while(this.id in gameMap) {
             this.id = makeId(5)
@@ -135,7 +134,7 @@ class Game {
 
     giveTasks() {
         for(let player in this.players) {
-            player.generateTasks(this.tasks)
+            player.generateTasks(this.tasks, this.numTasks)
         }
     }
 
