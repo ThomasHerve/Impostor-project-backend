@@ -79,7 +79,7 @@ class Game {
 
     // Game functions, called from this class (excepting startGame)
     /**
-     * Function to start the Game
+     * Method to start the Game
      */
     startGame() {
         // Players are already notified that the game has began
@@ -89,11 +89,12 @@ class Game {
         this.notifyPlayersRoles()
         // We populate the tasks
         this.giveTasks()
-
+        // Send first task to all players
+        
     }
 
     /**
-     * Function which design the impostors among the players
+     * Method which design the impostors among the players
      */
     selectImpostors() {
         // Security, you cannot have more than 25% of the players as impostor
@@ -118,12 +119,18 @@ class Game {
         }
     }
 
+    /**
+     * Method to call at the start of a game to notify each player of their role
+     */
     notifyPlayersRoles() {
         for(let player in this.players) {
             player.sendRole()
         }
     }
 
+    /**
+     * Method to create all the tasks based on the info given by the game owner
+     */
     createTasks(parameters) {
         let tasks = []
         parameters.tasks.forEach((taks_data)=>{
@@ -132,9 +139,21 @@ class Game {
         return tasks
     }
 
+    /**
+     * Method to call to generate the task pathing of each player
+     */
     giveTasks() {
         for(let player in this.players) {
             player.generateTasks(this.tasks, this.numTasks)
+        }
+    }
+
+    /**
+     * Call this function to send the first task to do to all players
+     */
+    sendFirstTaskToAllPlayers() {
+        for(let player in this.players) {
+            player.sendNextTask()
         }
     }
 

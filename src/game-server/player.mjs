@@ -27,7 +27,25 @@ export class Player {
         this.tasks = []
     }
 
-    // Websocket related functions
+    /**
+     * Method which populate the tasks of the player
+     * @param {Task[]} tasks all tasks available
+     * @param {number} numTasks the number of tasks to do
+     */
+     generateTasks(tasks, numTasks) {
+        this.numTasks = numTasks
+        let lastTask = undefined
+        for(let i = 0; i < this.numTasks; i++) {
+            let randomtask = tasks[Math.floor(Math.random() * tasks.length)]
+            while(randomtask == lastTask) {
+                randomtask = tasks[Math.floor(Math.random() * tasks.length)]
+            }
+            this.tasks.push(randomtask)
+            lastTask = randomtask
+        }
+    }
+
+    // Websocket related Method
     /**
      * Send the role to the client
      */
@@ -42,21 +60,22 @@ export class Player {
         }))
     }
 
+
     /**
-     * Function which populate the tasks of the player
-     * @param {Task[]} tasks all tasks available
-     * @param {number} numTasks the number of tasks to do
+     * Method to call to tell the player the next task to do
      */
-    generateTasks(tasks, numTasks) {
-        this.numTasks = numTasks
-        let lastTask = undefined
-        for(let i = 0; i < this.numTasks; i++) {
-            let randomtask = tasks[Math.floor(Math.random() * tasks.length)]
-            while(randomtask == lastTask) {
-                randomtask = tasks[Math.floor(Math.random() * tasks.length)]
-            }
-            this.tasks.push(randomtask)
-            lastTask = randomtask
+    sendNextTask() {
+        if(this.tasks.length === 0) {
+            this.ws.send(JSON.stringify({
+                "type": "allTasksDone",
+            }))
+        } else {
+            let task = this.tasks.shift()
+            this.ws.send(JSON.stringify({
+                "type": "nextTask",
+                "id": task.id,
+                "name": task.name
+            }))
         }
     }
 }
