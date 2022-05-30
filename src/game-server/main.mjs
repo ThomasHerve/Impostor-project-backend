@@ -90,7 +90,7 @@ class Game {
         // We populate the tasks
         this.giveTasks()
         // Send first task to all players
-        
+        this.sendFirstTaskToAllPlayers()
     }
 
     /**
