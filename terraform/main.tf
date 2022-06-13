@@ -38,6 +38,13 @@ resource "aws_security_group" "allow_ssh_http" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  ingress {
+    description = "SSH into VPC"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
   egress {
     description = "Outbound Allowed"
     from_port   = 0
