@@ -75,6 +75,10 @@ jobs:
       with:
         cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
+    # Setup credentials
+    - name: Configure aws creds
+      run: aws --profile default configure set aws_access_key_id ${{ secrets.ACCESS_KEY }} && aws --profile default configure set aws_secret_access_key ${{ secrets.SECRET_KEY }}
+
     # Move to folder
     - name: Move to folder
       run: mv terraform/* .
