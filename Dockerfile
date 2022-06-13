@@ -1,10 +1,10 @@
 FROM ubuntu
 
 WORKDIR /
-RUN sudo apt-get install -y node
-RUN sudo apt-get install -y npm
-RUN sudo npm install n
-RUN sudo n 14
+RUN apt-get install -y node
+RUN apt-get install -y npm
+RUN npm install n
+RUN n 14
 ADD src /
 ADD package.json /
 ADD package-lock.json /
