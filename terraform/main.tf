@@ -66,6 +66,7 @@ resource "aws_instance" "ec2_server" {
       "sudo systemctl start docker",
       "git clone https://github.com/ThomasHerve/Impostor-project-backend.git",
       "cd Impostor-project-backend",
+      "sudo chown $USER /var/run/docker.sock",
       "docker-compose build",
       "docker-compose up -d"
     ]
