@@ -57,8 +57,12 @@ resource "aws_instance" "ec2_server" {
   provisioner "remote-exec" {
     inline = [
       "sudo apt-get update",
-      "sudo apt-get install -y nginx",
-      "sudo systemctl start nginx"
+      "sudo apt-get install -y docker docker-compose git",
+      "sudo systemctl start docker",
+      "git clone https://github.com/ThomasHerve/Impostor-project-backend.git",
+      "cd Impostor-project-backend",
+      "docker-compose build",
+      "docker-compose up -d"
     ]
   }
   connection {
