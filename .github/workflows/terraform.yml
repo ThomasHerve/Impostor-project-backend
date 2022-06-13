@@ -84,8 +84,11 @@ jobs:
       run: mv terraform/* .
 
     #  Create vars file
-    - name: Create vars file
-      run: echo '''access_key = "${{ secrets.ACCESS_KEY }}"'''' > variables.tfvars && echo '''secret_key = "${{ secrets.SECRET_KEY }}"'''' >> variables.tfvars
+    - name: Create vars file (ACCESS)
+      run: echo access_key = "${{ secrets.ACCESS_KEY }}" > variables.tfvars 
+    
+    - name: Create vars file (SECRET)
+      run: echo secret_key = "${{ secrets.SECRET_KEY }}" >> variables.tfvars
 
     # Create ssh key
     - name: create ssh key
