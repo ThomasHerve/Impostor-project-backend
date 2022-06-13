@@ -6,4 +6,4 @@ ADD package.json /
 ADD package-lock.json /
 RUN npm --location=project install
 
-CMD cd /workspace/src/main-server && node server.mjs
+CMD cd /src/main-server && node server.mjs
