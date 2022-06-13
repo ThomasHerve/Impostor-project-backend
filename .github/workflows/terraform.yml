@@ -85,11 +85,11 @@ jobs:
 
     #  Create vars file
     - name: Create vars file
-      run: echo access_key = "${{ secrets.ACCESS_KEY }}" > variables.tfvars && echo secret_key = "${{ secrets.SECRET_KEY }}" >> variables.tfvars
+      run: echo '''access_key = "${{ secrets.ACCESS_KEY }}"'''' > variables.tfvars && echo '''secret_key = "${{ secrets.SECRET_KEY }}"'''' >> variables.tfvars
 
     # Create ssh key
     - name: create ssh key
-      run: echo ${{ secrets.SSH_KEY }} > impostor-terraform.pem
+      run: echo "${{ secrets.SSH_KEY }}" > impostor-terraform.pem
 
     # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
     - name: Terraform Init
