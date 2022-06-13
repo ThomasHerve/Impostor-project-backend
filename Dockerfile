@@ -4,6 +4,6 @@ WORKDIR /
 ADD src /
 ADD package.json /
 ADD package-lock.json /
-RUN npm install
+RUN npm -g install
 
 CMD cd /workspace/src/main-server && node server.mjs
