@@ -52,9 +52,9 @@ resource "aws_instance" "ec2_server" {
   instance_type          = var.instancetype
   key_name               = "impostor-terraform"
   vpc_security_group_ids = [aws_security_group.allow_ssh_http.id]
+  associate_public_ip_address = true
 
   provisioner "remote-exec" {
-    on_failure = continue
     inline = [
       "sudo apt-get update",
       "sudo apt-get install -y nginx",
@@ -63,7 +63,7 @@ resource "aws_instance" "ec2_server" {
   }
   connection {
     type        = "ssh"
-    user        = "ec2-user"
+    user        = "ubuntu"
     private_key = file("./impostor-terraform.pem")
     host        = self.public_ip
   }

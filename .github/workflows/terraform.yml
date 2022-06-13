@@ -50,6 +50,10 @@ jobs:
     - name: create ssh key
       run: echo "${{ secrets.SSH_KEY }}" > impostor-terraform.pem
 
+    # Rights on ssh key
+    - name: chmod on ssh key
+      run: chmod 400 impostor-terraform.pem
+
     # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
     - name: Terraform Init
       run: terraform init -var-file="variables.tfvars"
