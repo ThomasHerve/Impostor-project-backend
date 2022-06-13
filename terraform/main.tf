@@ -32,14 +32,14 @@ resource "aws_security_group" "allow_ssh_http" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
-    description = "SSH into VPC"
+    description = "HTTP into VPC"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
-    description = "SSH into VPC"
+    description = "8080 into VPC"
     from_port   = 8080
     to_port     = 8080
     protocol    = "tcp"
@@ -74,6 +74,7 @@ resource "aws_instance" "ec2_server" {
       "git clone https://github.com/ThomasHerve/Impostor-project-backend.git",
       "cd Impostor-project-backend",
       "sudo chown $USER /var/run/docker.sock",
+      "sudo ufw allow 8080",
       "docker-compose build",
       "docker-compose up -d"
     ]
