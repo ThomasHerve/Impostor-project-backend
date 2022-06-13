@@ -83,20 +83,24 @@ jobs:
     - name: Move to folder
       run: mv terraform/* .
 
+    #  Create vars file
+    - name: Create vars file
+      run: echo access_key = "${{ secrets.ACCESS_KEY }}" > variables.tfvars && echo secret_key = "${{ secrets.SECRET_KEY }}" >> variables.tfvars
+
+    # Create ssh key
+    - name: create ssh key
+      run: echo ${{ secrets.SSH_KEY }} > impostor-terraform.pem
+
     # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
     - name: Terraform Init
-      run: terraform init
-
-    # Checks that all Terraform configuration files adhere to a canonical format
-    - name: Terraform Format
-      run: terraform fmt -check
+      run: terraform init -var-file="variables.tfvars"
 
     # Generates an execution plan for Terraform
     - name: Terraform Plan
-      run: terraform plan -input=false
+      run: terraform plan -input=false -var-file="variables.tfvars"
 
       # On push to "main", build or change infrastructure according to Terraform configuration files
       # Note: It is recommended to set up a required "strict" status check in your repository for "Terraform Cloud". See the documentation on "strict" required status checks for more information: https://help.github.com/en/github/administering-a-repository/types-of-required-status-checks
     - name: Terraform Apply
       if: github.ref == 'refs/heads/"main"' && github.event_name == 'push'
-      run: terraform apply -replace=aws_instance.ec2_server -auto-approve -input=false
+      run: terraform apply -replace=aws_instance.ec2_server -auto-approve -input=false -var-file="variables.tfvars"

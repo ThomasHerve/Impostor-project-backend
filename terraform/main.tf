@@ -15,7 +15,7 @@ data "aws_ami" "ubuntu" {
 }
 
 provider "aws" {
-  region = var.region
+  region     = var.region
   access_key = var.access_key
   secret_key = var.secret_key
 }
@@ -48,23 +48,23 @@ resource "aws_security_group" "allow_ssh_http" {
 }
 
 resource "aws_instance" "ec2_server" {
-  ami           = data.aws_ami.ubuntu.id
-  instance_type = var.instancetype
-  key_name = "impostor-terraform"
-  vpc_security_group_ids  = [aws_security_group.allow_ssh_http.id]
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = var.instancetype
+  key_name               = "impostor-terraform"
+  vpc_security_group_ids = [aws_security_group.allow_ssh_http.id]
 
   provisioner "remote-exec" {
-     on_failure = continue
-     inline = [
-       "sudo apt-get update",
-       "sudo apt-get install -y nginx",
-       "sudo systemctl start nginx"
-     ]
-   }
-   connection {
-     type = "ssh"
-     user = "ec2-user"
-     private_key = file("./impostor-terraform.pem")
-     host = self.public_ip
-   }
+    on_failure = continue
+    inline = [
+      "sudo apt-get update",
+      "sudo apt-get install -y nginx",
+      "sudo systemctl start nginx"
+    ]
+  }
+  connection {
+    type        = "ssh"
+    user        = "ec2-user"
+    private_key = file("./impostor-terraform.pem")
+    host        = self.public_ip
+  }
 }
