@@ -60,6 +60,7 @@ resource "aws_instance" "ec2_server" {
   key_name               = "impostor-terraform"
   vpc_security_group_ids = [aws_security_group.allow_ssh_http.id]
   associate_public_ip_address = true
+  count = 2
 
   provisioner "remote-exec" {
     inline = [
