@@ -1,14 +1,13 @@
 import { WebSocketServer } from 'ws';
 import { Lobby } from './lobby.mjs'
-import { GameInterface } from '../game-server/main.mjs'
 const lobby = Lobby()
-const game = GameInterface()
 
 // ********************* SERVER LOGIC ********************
 
 const wss = new WebSocketServer({
     port: 8080
 })
+console.log("Server started")
 
 /**
  * data contains : 
@@ -20,8 +19,6 @@ wss.on('connection', (ws)=>{
     ws.on('close', ()=>{
         if(id in playersMap) {
             leaveLobby(id)
-        } else {
-            game.handleLeave(id)
         }
     })
     ws.on('message', (data)=>{
@@ -105,7 +102,7 @@ wss.on('connection', (ws)=>{
                     "type": "invalidPacket",
                 }))
             } else {
-                if(!lobby.isOwner(id) || !game.checkGameValid(parameters, id, lobby.allPlayerOfLobby(id))) {
+                if(!lobby.isOwner(id) || !checkGameValid(parameters, id, lobby.allPlayerOfLobby(id))) {
                     ws.send(JSON.stringify({
                         "type": "invalidLobby",
                     }))
@@ -119,27 +116,23 @@ wss.on('connection', (ws)=>{
                 lobby.launchGame(id,
                     () => {
                         // Start game
-                        gameInstance = game.createGame(parameters, unregisterPlayer)
+                        // gameInstance = game.createGame(parameters, unregisterPlayer) // OLD
+                        gameInstance = new Game(parameters)
                     }, 
                     (playerID) => {
-                    playersMap[playerID].ws.send(JSON.stringify({
-                        "type": "startGame"
-                    }))
                     // Add player to the game
                     gameInstance.addPlayer({
                         'id': playerID,
                         'name': playersMap[playerID].name,
                         'ws': playersMap[playerID].ws
                     })
-                    
+                    // Remove the players from the map which track them
                     delete playersMap[playerID]
                 })
                 if(gameInstance != undefined) {
-                    gameInstance.startGame()
+                    gameInstance.launchGame()
                 }
             }
-        } else {
-            game.handleMessage(data, id)
         }
     })
 })
@@ -218,6 +211,57 @@ function getNames(playersID) {
         ret.push(playersMap[item].name)
     })
     return ret
+}
+
+// ********************* Game descriptor class ***************
+
+class Game {
+
+    constructor(parameters) {
+        this.parameters = parameters
+        this.players = []
+    }
+
+    addPlayer(playerID) {
+        this.players.push(playerID)
+    }
+
+    launchGame() {
+        // Create Game
+        console.log("Here create new game")
+
+        // Notify players
+        this.players.forEach((player)=>{
+            player.ws.send(JSON.stringify({
+                "type": "startGame",
+                "IP": "TODO",
+                "PORT": "TODO"
+            }))
+            // Remove player from id map
+            unregisterPlayer(player.id)
+        })
+    }
+}
+
+function checkGameValid(parameters, ownerID, playersID) {
+    let n = playersID.length + 1
+    if(n < 4) {
+        return false
+    }
+    if(parameters.numberOfImpostors < 1) {
+        return false
+    }
+    // At least 4 tasks
+    if(parameters.tasks.length < 4) {
+        return false
+    }
+    // Check tasks are correct
+    parameters.tasks.forEach((task)=>{
+        if(task.length != 2) {
+            return false
+        }
+    })
+    return true
 }
 
 /**

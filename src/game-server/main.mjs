@@ -212,37 +212,6 @@ function handleReconnect(id, ws) {
     }
 }
 
-function checkGameValid(parameters, ownerID, playersID) {
-    let n = playersID.length + 1
-    if(n < 4) {
-        return false
-    }
-    if(parameters.numberOfImpostors < 1) {
-        return false
-    }
-    // At least 4 tasks
-    if(parameters.tasks.length < 4) {
-        return false
-    }
-    // Check tasks are correct
-    parameters.tasks.forEach((task)=>{
-        if(task.length != 2) {
-            return false
-        }
-    })
-    return true
-}
-
-export function GameInterface() {
-    return {
-        'createGame': createGame,
-        'handleMessage': handleMessage,
-        'handleLeave':handleLeave,
-        'handleReconnect':handleReconnect,
-        'checkGameValid': checkGameValid
-    }
-}
-
 /**
  * 
  * Send type:
