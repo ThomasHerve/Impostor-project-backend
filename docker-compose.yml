@@ -3,9 +3,7 @@ version: "3.7"
 services:
   server: 
     container_name: main-server
-    build: 
-       context: .
-       dockerfile: ./Dockerfile
+    image: thomasherve/impostor-project-backend
     ports: 
       - 8080:8080
     networks:
