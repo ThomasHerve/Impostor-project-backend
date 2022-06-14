@@ -1,7 +1,7 @@
 FROM ubuntu
 
 WORKDIR /
-RUN apt-get install -y node
+RUN apt-get install -y nodejs
 RUN apt-get install -y npm
 RUN npm install n
 RUN n 14
