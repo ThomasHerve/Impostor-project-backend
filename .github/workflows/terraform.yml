@@ -9,6 +9,20 @@ permissions:
   contents: read
 
 jobs:
+  docker:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag impostor-project-backend
+
+    - name: Connect to dockerhub
+      run: docker login -u ${{secrets.DOCKER_LOGIN}} -p ${{secrets.DOCKER_PASSWORD}}
+    
+    - name: Push to dockerhub
+      run: docker push impostor-project-backend
+
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
