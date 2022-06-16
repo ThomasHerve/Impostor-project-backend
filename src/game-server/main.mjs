@@ -1,7 +1,5 @@
-import { Lobby } from '../main-server/lobby.mjs'
 import { Player } from './player.mjs'
 import {Task} from './task.mjs'
-const makeId = Lobby().makeId
 
 
 /**
@@ -12,10 +10,6 @@ const makeId = Lobby().makeId
  * numTasks (Optional): number of tasks per crewmate, 10 by default
  */
 
-// ********************* DATA STRUCTURES ********************
-
-const gameMap = {} // GameID -> Game
-const playerMap = {} // PlayerID -> GameID
 
 // ********************* PUBLIC CLASSES *******************
 
@@ -24,21 +18,13 @@ class Game {
     /**
      * The Game constructor
      * @param {Object} parameters object containing the parameters (See above for more details)
-     * @param {*} endGameCallback Function which unregister one player, to call on all player when game is over
      */
-    constructor(parameters, endGameCallback) {
+    constructor(parameters) {
         // Attributes
-        this.endGameCallback = endGameCallback
         this.parameters = parameters
-        this.id = makeId(5)
         this.players = {}
         this.tasks = this.createTasks(parameters)
         this.numTasks = Number.isFinite(parameters["numTasks"]) ? parameters["numTasks"] : 10
-
-        while(this.id in gameMap) {
-            this.id = makeId(5)
-        }
-        gameMap[this.id] = this
     }
 
     // External functions, Which means they are called by the outside (lobby management, player disconnecting/reconnecting)
@@ -48,7 +34,6 @@ class Game {
      */
     addPlayer(player) {
         this.players[player.id] = new Player(player.name, player.ws, player.id)
-        playerMap[player.id] = this.id
     }
     
     /**
@@ -75,7 +60,7 @@ class Game {
      */
     handleMessage(data, id) {
         let ws = this.players[id].ws
-
+        // TODO HANDLE MESSAGES
 
 
     }
@@ -165,52 +150,10 @@ class Game {
      * Method to call to end this game
      */
     end() {
-        for(let player in this.players) {
-            delete playerMap[player.id]
-            this.endGameCallback(player.id)
-        }
-        delete gameMap[this.id]
         console.log(`Game ${this.id} ended`)
     }
 }
 
-
-// Entrypoint for server
-function handleMessage(data, id) {
-    if(data.gameID != undefined && data.gameID in gameMap) {
-        gameMap[data.gameID].handleMessage(data, id)
-    }
-}
-
-/**
- * Function to create a new game
- * @param {Function} endGameCallback
- * @returns {Game}
- */
-function createGame(endGameCallback) {
-    return new Game(endGameCallback)
-}
-
-/**
- * Function to handle a player which broke the connection with the server
- * @param {String} id the id of the player that broke the connection
- */
-function handleLeave(id) {
-    if(id in playerMap && playerMap[id] in gameMap) {
-        gameMap[playerMap[id]].playerLeaved(id)
-    }
-}
-
-/**
- * Function to handle the reconnection of a player that leaved a game
- * @param {String} id playerID
- * @param {*} ws the new websocket of the player
- */
-function handleReconnect(id, ws) {
-    if(id in playerMap && playerMap[id] in gameMap) {
-        gameMap[playerMap[id]].playerReconnect(id, ws)
-    }
-}
 
 /**
  * 

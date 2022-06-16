@@ -1,6 +1,6 @@
 // ********************* DATA STRUCTURES ********************
 
-const minPlayers = 4
+const minPlayers = 2
 const lobbyMap = {} // ID -> player[]
 const ownerMap = {} // player -> ID
 const joinerMap = {} // player -> ID
@@ -34,9 +34,11 @@ function joinLobby(idLobby, player, successFunction, failureFunction, newPlayerE
         lobbyMap[idLobby].push(player)
         joinerMap[player] = idLobby
         lobbyMap[idLobby].forEach((p)=>{
-            // p = player to send the callback
-            // player = player data to send
-            newPlayerEnterFunction(p)
+            if(p != player) {
+                // p = player to send the callback
+                // player = player data to send
+                newPlayerEnterFunction(p)
+            }
         })
         successFunction(lobbyMap[idLobby])
     }
@@ -172,6 +174,7 @@ export function Lobby() {
         'callbackAllPlayers': callbackAllPlayers,
         'allPlayerOfLobby': allPlayerOfLobby,
         'isOwner': isOwner,
+        'minPlayers': minPlayers,
 
         // Expose this data structures for testing purposes
         'lobbyMap': lobbyMap,

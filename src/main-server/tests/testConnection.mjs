@@ -53,14 +53,41 @@ function question() {
                 }))
             }
         } else if(value.startsWith("Leave")) {
-            console.log("OK")
             ws.send(JSON.stringify({
                 "type": "leaveLobby",
             }))
         } else if(value.startsWith("Launch")) {
             ws.send(JSON.stringify({
                 "type": "launchGame",
-            }))    
+                "numberOfImpostors": 1,
+                "tasks": [
+                    {
+                        id: 1,
+                        name: "A",
+                        nature: "task"
+                    },
+                    {
+                        id: 2,
+                        name: "B",
+                        nature: "task"
+                    },
+                    {
+                        id: 3,
+                        name: "C",
+                        nature: "task"
+                    },
+                    {
+                        id: 4,
+                        name: "OXYGEN",
+                        nature: "sabotage"
+                    },
+                    {
+                        id: 5,
+                        name: "D",
+                        nature: "task"
+                    },
+                ]
+            }))
         } else if(value.startsWith("ChangeName")) {
             ws.send(JSON.stringify({
                 "type": "changeName",

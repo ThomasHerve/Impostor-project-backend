@@ -15,10 +15,13 @@ console.log("Server started")
  * - playerName : name of the player, choose by the player itself 
  */
 wss.on('connection', (ws)=>{
+    console.log("Anonymous user connected")
     let id = ""
     ws.on('close', ()=>{
         if(id in playersMap) {
             leaveLobby(id)
+        } else {
+            console.log(`Anonymous user leaved`)
         }
     })
     ws.on('message', (data)=>{
@@ -33,6 +36,7 @@ wss.on('connection', (ws)=>{
                             "type": "lobbyCreated",
                             "lobbyID" : lobbyID,
                         }))
+                        console.log(`Player ${playersMap[id].name} created a lobby with id ${lobbyID}`)
                     }
                 )
             } else {
@@ -58,6 +62,7 @@ wss.on('connection', (ws)=>{
                             "type": "lobbyJoinSuccess",
                             "players": playerArray 
                         }))
+                        console.log(`Player ${playersMap[id].name} joined the ${data.lobbyID} lobby`)
                     },
                     // failure : lobby doesn't exist
                     () => {
@@ -82,10 +87,14 @@ wss.on('connection', (ws)=>{
         } else if(data.type === "leaveLobby") {
             if(id != "") {
                 leaveLobby(id)
+                ws.send(JSON.stringify({
+                    "type": "acknowledgeLeaveLobby",
+                }))
                 id = ""
             }
         } else if(data.type === "changeName") {
             if(id != "" && data.playerName != undefined) {
+                console.log(`Player ${playersMap[id].name} renammed to ${data.playerName}`)
                 playersMap[id].name = data.playerName
                 lobby.callbackAllPlayers(id, (p)=>{
                     if(p != id) {
@@ -93,15 +102,23 @@ wss.on('connection', (ws)=>{
                             "type": "changeName",
                             "players": getNames(lobby.allPlayerOfLobby(p))
                         }))
+                    } else {
+                        ws.send(JSON.stringify({
+                            "type": "acknowledgeNewName",
+                        }))
                     }
                 })
             }
         } else if(data.type === "launchGame") {       
-            if(data.numberOfImpostors == undefined || data.tasks == undefined) {
+            if(data.numberOfImpostors == undefined || data.tasks == undefined || id === "") {
                 ws.send(JSON.stringify({
                     "type": "invalidPacket",
                 }))
             } else {
+                let parameters = {
+                    "numberOfImpostors": data.numberOfImpostors,
+                    "tasks": data.tasks
+                }
                 if(!lobby.isOwner(id) || !checkGameValid(parameters, id, lobby.allPlayerOfLobby(id))) {
                     ws.send(JSON.stringify({
                         "type": "invalidLobby",
@@ -109,10 +126,6 @@ wss.on('connection', (ws)=>{
                     return
                 }
                 let gameInstance = undefined
-                let parameters = {
-                    "numberOfImpostors": data.numberOfImpostors,
-                    "tasks": data.tasks
-                }
                 lobby.launchGame(id,
                     () => {
                         // Start game
@@ -182,10 +195,12 @@ function leaveLobby(playerID) {
     ids = ids.filter(item => {
         return item != playerID
     });
-    let names = getNames(ids)
     lobby.leaveLobby(playerID,
         // Non owner leaving
         (pID)=>{
+            let names = getNames(ids.filter(item => {
+                return item != pID
+            }))
             playersMap[pID].ws.send(JSON.stringify({
                 "type": "playerLeft",
                 "players": names
@@ -245,7 +260,7 @@ class Game {
 
 function checkGameValid(parameters, ownerID, playersID) {
     let n = playersID.length + 1
-    if(n < 4) {
+    if(n < lobby.minPlayers) {
         return false
     }
     if(parameters.numberOfImpostors < 1) {
