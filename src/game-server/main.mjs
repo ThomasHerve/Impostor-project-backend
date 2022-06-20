@@ -155,6 +155,11 @@ class Game {
 }
 
 
+// ***************** ENTRYPOINT *****************
+
+console.log("OK IT WORKS")
+
+
 /**
  * 
  * Send type:
