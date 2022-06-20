@@ -9,7 +9,7 @@ if(process.argv.includes("devel")) {
 const wss = new WebSocketServer({
     port: 8081
 })
-console.log("Server started")
+console.log("Spawner started")
 
 wss.on('connection', (ws)=>{
     // Clients cannot connect to this websocket (we don't open 8081 on AWS), we are sure the messages are from our agents and are safe
@@ -29,7 +29,7 @@ let portsTaken = new Set()
 function getPorts() {
     let ports = []
     for(let i = 4000; i <= 8000; i++) {
-        ports.append(i)
+        ports.push(i)
     }
     return ports
 }
@@ -43,7 +43,7 @@ function takePort() {
 
 function freePort(portNumber) {
     portsTaken.remove(portNumber)
-    ports.append(portNumber)
+    ports.push(portNumber)
 }
 
 
