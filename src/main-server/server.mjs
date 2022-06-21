@@ -235,6 +235,7 @@ const spawnerWs = new WebSocket("ws://localhost:8081")
 
 spawnerWs.on("message", (data)=>{
     data = JSON.parse(data)
+    console.log(`Game created on port ${data.port}`)
     let port = data.port
     let game = games.pop()
     game.notifyPlayers(port)
@@ -255,8 +256,11 @@ class Game {
 
     launchGame() {
         // Create Game
+        this.parameters["numPlayers"] = this.players.length
+        console.log("Send game creation request")
         spawnerWs.send(JSON.stringify({
-            "command": "create"
+            "command": "create",
+            "parameters": this.parameters
         }))
     }
 

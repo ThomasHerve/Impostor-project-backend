@@ -1,6 +1,8 @@
 import { Player } from './player.mjs'
 import {Task} from './task.mjs'
-
+import { WebSocketServer } from 'ws';
+import { Lobby } from '../main-server/lobby.mjs'
+const lobby = Lobby()
 
 /**
  * 
@@ -13,13 +15,72 @@ import {Task} from './task.mjs'
 
 // ********************* PUBLIC CLASSES *******************
 
-class Game {
+export class Game {
 
     /**
      * The Game constructor
-     * @param {Object} parameters object containing the parameters (See above for more details)
+     * Initialize the listening websocket
      */
-    constructor(parameters) {
+    constructor(port) {
+        let initialized = false
+        this.players = {}
+        this.port = port
+        this.playersIDSet = new Set()
+        this.wss = new WebSocketServer({
+            port: port
+        })
+        
+        let numberOfPlayers = 0
+        let totalPlayers = undefined
+        this.wss.on('connection', (ws)=>{
+            // Clients cannot connect to this websocket (we don't open 8081 on AWS), we are sure the messages are from our agents and are safe
+            ws.on('message', (data)=>{
+                data = JSON.parse(data)
+                if(initialized) {
+                    // The game is running, for e better code comprehension the behaviour is defined bellow
+                    handleMessage(data, ws)
+                } else  {
+                    // Manage to get all the players
+                    if(data.spawner != undefined) {
+                        // We get the number of players + the parameters
+                        this.setParameters(data.parameters)
+                        totalPlayers = data.parameters.numPlayers
+                        this.log(`Spawner send that we have ${totalPlayers} players`)
+                    } else if(data.type === "connect" && data.playerName != undefined) {
+                        this.addPlayer(data.playerName, ws)
+                        numberOfPlayers++
+                        this.log(`We currently have ${numberOfPlayers} players`)
+                    }
+
+                    // Launch
+                    if(totalPlayers != undefined && totalPlayers === numberOfPlayers) {
+                        this.log(`All conditions fullfilled to start the game`)
+                        initialized = true
+                        this.startGame()
+                    }
+                } 
+            })
+        })
+    }
+
+
+    // External functions, Which means they are called by the outside (lobby management, player disconnecting/reconnecting)
+    /**
+     * Add a player to the game
+     * @param {String} name the player to register
+     * @param {WebSocket} ws the websocket of the player
+     */
+    addPlayer(name, ws) {
+        this.log(`player ${name} joined`)
+        let id = lobby.makeId(5)
+        while(this.playersIDSet.has(id)) {
+            id = lobby.makeId(5)
+        }
+        this.playersIDSet.add(id)
+        this.players[id] = new Player(name, ws, id)
+    }
+
+    setParameters(parameters) {
         // Attributes
         this.parameters = parameters
         this.players = {}
@@ -27,14 +88,16 @@ class Game {
         this.numTasks = Number.isFinite(parameters["numTasks"]) ? parameters["numTasks"] : 10
     }
 
-    // External functions, Which means they are called by the outside (lobby management, player disconnecting/reconnecting)
     /**
-     * Add a player to the game
-     * @param {Object} player 
+     * Function to handle commands from users
+     * @param {Object} data 
+     * @param {WebSocket} ws
      */
-    addPlayer(player) {
-        this.players[player.id] = new Player(player.name, player.ws, player.id)
-    }
+     handleMessage(data, ws) {
+        // TODO HANDLE MESSAGES
+        
+
+     }
     
     /**
      * Handle a player of this particular game leaving
@@ -51,18 +114,6 @@ class Game {
     playerReconnect(playerID, ws) {
         this.players[playerID].online = true
         this.players[playerID].ws = ws
-    }
-
-    /**
-     * Function to handle commands from users
-     * @param {Object} data 
-     * @param {WebSocket} id
-     */
-    handleMessage(data, id) {
-        let ws = this.players[id].ws
-        // TODO HANDLE MESSAGES
-
-
     }
 
     // Game functions, called from this class (excepting startGame)
@@ -150,9 +201,15 @@ class Game {
      * Method to call to end this game
      */
     end() {
+        this.wss.close()
         console.log(`Game ${this.id} ended`)
     }
+
+    log(text) {
+        console.log(`Game ${this.port}: ${text}`)
+    }
 }
+
 
 
 /**

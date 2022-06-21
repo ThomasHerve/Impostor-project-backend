@@ -1,5 +1,6 @@
 // This module detect if  we are in production or development, and deploy games
-import { WebSocketServer } from 'ws';
+import { WebSocketServer, WebSocket } from 'ws';
+import { Game } from '../game-server/main.mjs'
 
 let devel = false
 if(process.argv.includes("devel")) {
@@ -17,10 +18,19 @@ wss.on('connection', (ws)=>{
     ws.on('message', (data)=>{
         data = JSON.parse(data)
         if(data.command === "create") {
-            let port = spawnGame()
+            let port = spawnGame(data.parameters)
             ws.send(JSON.stringify({
                 "port": port
             }))
+            // connect to game
+            const gameWs = new WebSocket("ws://localhost:" + port)
+            // Wait for websocket to open
+            gameWs.on("open", ()=>{
+                gameWs.send(JSON.stringify({
+                    "spawner": true,
+                    "parameters": data.parameters
+                }))
+            })
         } else if(data.command === "remove") {
             removeGame(data.port)
         } 
@@ -76,18 +86,18 @@ function freePort(portNumber) {
 function spawnGame() {
     let port = takePort()
     if(devel) {
-        spawnGameDevel()
+        spawnGameDevel(port)
     } else {
-        spawnGameProd()
+        spawnGameProd(port)
     }
     return port
 }
 
-function spawnGameDevel() {
-
+function spawnGameDevel(port) {
+    new Game(port)
 }
 
-function spawnGameProd() {
+function spawnGameProd(port) {
     // TODO
 }
 
@@ -100,14 +110,14 @@ function spawnGameProd() {
 function removeGame(portNumber) {
     freePort(portNumber)
     if(devel) {
-
+        removeGameDevel(portNumber)
     } else {
-        // TODO
+        removeGameProd(portNumber)
     }
 }
 
 function removeGameDevel() {
-
+    freePort()
 }
 
 function removeGameProd() {
