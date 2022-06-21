@@ -13,7 +13,7 @@ services:
     container_name: main-server
     image: thomasherve/impostor-project-backend-spawner
     ports: 
-      - 8081:8081
+       - 8081:8081
     networks:
       - net
 

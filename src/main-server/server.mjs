@@ -1,4 +1,4 @@
-import { WebSocketServer } from 'ws';
+import { WebSocketServer, WebSocket } from 'ws';
 import { Lobby } from './lobby.mjs'
 const lobby = Lobby()
 
@@ -143,6 +143,7 @@ wss.on('connection', (ws)=>{
                     delete playersMap[playerID]
                 })
                 if(gameInstance != undefined) {
+                    games.push(gameInstance)
                     gameInstance.launchGame()
                 }
             }
@@ -230,6 +231,17 @@ function getNames(playersID) {
 
 // ********************* Game descriptor class ***************
 
+const spawnerWs = new WebSocket("ws://localhost:8081")
+
+spawnerWs.on("message", (data)=>{
+    data = JSON.parse(data)
+    let port = data.port
+    let game = games.pop()
+    game.notifyPlayers(port)
+})
+
+let games = []
+
 class Game {
 
     constructor(parameters) {
@@ -243,14 +255,17 @@ class Game {
 
     launchGame() {
         // Create Game
-        console.log("Here create new game")
+        spawnerWs.send(JSON.stringify({
+            "command": "create"
+        }))
+    }
 
+    notifyPlayers(port) {
         // Notify players
         this.players.forEach((player)=>{
             player.ws.send(JSON.stringify({
                 "type": "startGame",
-                "IP": "TODO",
-                "PORT": "TODO"
+                "port": port
             }))
             // Remove player from id map
             unregisterPlayer(player.id)

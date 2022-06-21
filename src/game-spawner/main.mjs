@@ -1,32 +1,45 @@
 // This module detect if  we are in production or development, and deploy games
-import { WebSocketServer, WebSocket } from 'ws';
+import { WebSocketServer } from 'ws';
 
 let devel = false
 if(process.argv.includes("devel")) {
     devel = true // We are on the developer computer 
+    log("We are in devel context")
 }
 
 const wss = new WebSocketServer({
     port: 8081
 })
-console.log("Spawner started")
+log("Started")
 
 wss.on('connection', (ws)=>{
     // Clients cannot connect to this websocket (we don't open 8081 on AWS), we are sure the messages are from our agents and are safe
     ws.on('message', (data)=>{
-
+        data = JSON.parse(data)
+        if(data.command === "create") {
+            let port = spawnGame()
+            ws.send(JSON.stringify({
+                "port": port
+            }))
+        } else if(data.command === "remove") {
+            removeGame(data.port)
+        } 
     })
 })
 
 //**********************    DATA   ***************************/
 
-let portsAvailables = getPorts()
+let portsAvailables = initPorts()
 let portsTaken = new Set()
 
 
 //********************** FUNCTIONS ***************************/
 
-function getPorts() {
+/**
+ * Initialize all the available ports
+ * @returns Array<number>
+ */
+function initPorts() {
     let ports = []
     for(let i = 4000; i <= 8000; i++) {
         ports.push(i)
@@ -34,25 +47,71 @@ function getPorts() {
     return ports
 }
 
-
+/**
+ * Function which take a port from the list of the availables ones
+ * @returns number
+ */
 function takePort() {
     let port = portsAvailables.pop()
     // /!\ we cannot have more than 4000 games simultaneously, this shouldn't happend i guess
     portsTaken.add(port)
+    return port
 }
 
+
+/**
+ * Function which put a port back in the available ones
+ * @param {number} portNumber 
+ */
 function freePort(portNumber) {
     portsTaken.remove(portNumber)
     ports.push(portNumber)
 }
 
+//******************* SPAWN GAME **************/
 
+/**
+ * Function to call to spawn a game
+ */
 function spawnGame() {
+    let port = takePort()
+    if(devel) {
+        spawnGameDevel()
+    } else {
+        spawnGameProd()
+    }
+    return port
+}
+
+function spawnGameDevel() {
 
 }
 
-function removeGame() {
+function spawnGameProd() {
+    // TODO
+}
 
+//****************** REMOVE GAME *************/
+
+/**
+ * Function to call to remove a game spawned on a given port
+ * @param {number} portNumber 
+ */
+function removeGame(portNumber) {
+    freePort(portNumber)
+    if(devel) {
+
+    } else {
+        // TODO
+    }
+}
+
+function removeGameDevel() {
+
+}
+
+function removeGameProd() {
+    // TODO
 }
 
 //******************* HEALTHCHECK **************/
@@ -60,3 +119,8 @@ function removeGame() {
 // TODO => each minute check if our ongoing games are alive
 
 
+//*******************     LOGS    **************/
+
+function log(text) {
+    console.log(`Spawner: ${text}`)
+}
