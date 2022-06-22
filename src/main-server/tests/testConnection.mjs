@@ -37,9 +37,7 @@ function startGame(port) {
     })
     ws.on('close', ()=>{
         console.log("Game server died, quitting...")
-        if(!ingame) {
-            process.exit()
-        }
+        process.exit()
     })
     if(name === undefined) {
         name = "Player"
@@ -83,39 +81,35 @@ function question() {
                 console.log("'Leave': leave lobby")
                 console.log("'Launch': launch the game")
                 question()
-            } else if(value.startsWith("Create")) {
-                ws.send(JSON.stringify({
+            } else if(value.startsWith("Create") || value.startsWith("create") || value === "c") {
+                let obj = {
                     "type": "createLobby",
                     "playerName": "testPlayerCreate"
-                }))
-                if(name != undefined) {
-                    ws.send(JSON.stringify({
-                        "type": "changeName",
-                        "playerName": name
-                    }))
                 }
-            } else if(value.startsWith("Join")) {
+                if(name != undefined) {
+                    obj.name = name
+                }
+                ws.send(JSON.stringify(obj))
+            } else if(value.startsWith("Join") || value.startsWith("join") || (value.startsWith("j") && value.split(" ")[0] === "j")) {
                 if(value.split(" ").length < 2) {
                     console.log("Error: need a room id")
                     question()
                 } else {
-                    ws.send(JSON.stringify({
+                    let obj = {
                         "type": "joinLobby",
                         "playerName": "testPlayerJoin",
                         "lobbyID": value.split(" ")[1]
-                    }))
-                    if(name != undefined) {
-                        ws.send(JSON.stringify({
-                            "type": "changeName",
-                            "playerName": name
-                        }))
                     }
+                    if(name != undefined) {
+                        obj.name = name
+                    }
+                    ws.send(JSON.stringify(obj))
                 }
-            } else if(value.startsWith("Leave")) {
+            } else if(value.startsWith("Leave") || value.startsWith("leave") || value === "le") {
                 ws.send(JSON.stringify({
                     "type": "leaveLobby",
                 }))
-            } else if(value.startsWith("Launch")) {
+            } else if(value.startsWith("Launch") || value.startsWith("launch") || value === "l") {
                 ws.send(JSON.stringify({
                     "type": "launchGame",
                     "numberOfImpostors": 1,
@@ -147,7 +141,7 @@ function question() {
                         },
                     ]
                 }))
-            } else if(value.startsWith("ChangeName")) {
+            } else if(value.startsWith("ChangeName") || value.startsWith("changename") || value === "cn") {
                 name = value.split(" ")[1]
                 ws.send(JSON.stringify({
                     "type": "changeName",
@@ -165,6 +159,8 @@ function question() {
             if(value === "help") {
                 console.log("TODO")
                 question()
+            } else if(value.startsWith("exit")) {
+                ws.close()
             }
         }
     });

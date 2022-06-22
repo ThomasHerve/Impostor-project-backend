@@ -31,9 +31,10 @@ wss.on('connection', (ws)=>{
                     "parameters": data.parameters
                 }))
             })
-        } else if(data.command === "remove") {
-            removeGame(data.port)
-        } 
+            gameWs.on("close",()=>{
+                removeGame(port)
+            })
+        }
     })
 })
 

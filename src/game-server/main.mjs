@@ -71,11 +71,11 @@ export class Game {
      * @param {WebSocket} ws the websocket of the player
      */
     addPlayer(name, ws) {
-        this.log(`player ${name} joined`)
         let id = lobby.makeId(5)
         while(this.playersIDSet.has(id)) {
             id = lobby.makeId(5)
         }
+        this.log(`player ${name} (with id ${id}) joined`)
         this.playersIDSet.add(id)
         this.players[id] = new Player(name, ws, id)
     }
@@ -83,14 +83,13 @@ export class Game {
     setParameters(parameters) {
         // Attributes
         this.parameters = parameters
-        this.players = {}
         this.tasks = this.createTasks(parameters)
         this.numTasks = Number.isFinite(parameters["numTasks"]) ? parameters["numTasks"] : 10
     }
 
     /**
      * Function to handle commands from users
-     * @param {Object} data 
+     * @param {Object} data
      * @param {WebSocket} ws
      */
      handleMessage(data, ws) {
@@ -136,15 +135,17 @@ export class Game {
      * Method which design the impostors among the players
      */
     selectImpostors() {
-        // Security, you cannot have more than 25% of the players as impostor
         let playersID = Object.keys(this.players)
-        let numberOfImpostors = Math.min(this.parameters.numberOfImpostors, Math.floor(playersID.length / 4))
+        let numberOfImpostors = Math.min(this.parameters.numberOfImpostors, Math.max(Math.floor(playersID.length / 4), 1)) // Security, you cannot have more than 25% of the players as impostor
+
+        this.numberOfImpostors = numberOfImpostors // Attribute
 
         // Security against any possible infinite loop
         let maxRetry = 10000
-
+        this.log(`Number of impostors: ${numberOfImpostors}`)
         while(numberOfImpostors > 0) {
             let randomPlayer = playersID[Math.floor(Math.random() * playersID.length)]
+            this.log(`Random player selected is: ${randomPlayer}`)
             if(!this.players[randomPlayer].impostor) {
                 this.players[randomPlayer].impostor = true
                 numberOfImpostors--
@@ -162,9 +163,10 @@ export class Game {
      * Method to call at the start of a game to notify each player of their role
      */
     notifyPlayersRoles() {
-        for(let player in this.players) {
-            player.sendRole()
-        }
+        this.log(`Type of players: ${typeof this.players}, ${typeof this.players[Object.keys(this.players)[0]]}`)
+        this.players.forEach(
+            (player) => player.sendRole()
+        )
     }
 
     /**
@@ -182,18 +184,18 @@ export class Game {
      * Method to call to generate the task pathing of each player
      */
     giveTasks() {
-        for(let player in this.players) {
-            player.generateTasks(this.tasks, this.numTasks)
-        }
+        this.players.forEach(
+            (player) => player.generateTasks(this.tasks, this.numTasks)
+        )
     }
 
     /**
      * Call this function to send the first task to do to all players
      */
     sendFirstTaskToAllPlayers() {
-        for(let player in this.players) {
-            player.sendNextTask()
-        }
+        this.players.forEach(
+            (player) => player.sendNextTask()
+        )
     }
 
     // End the game
@@ -202,7 +204,7 @@ export class Game {
      */
     end() {
         this.wss.close()
-        console.log(`Game ${this.id} ended`)
+        this.log(`Game ${this.id} ended`)
     }
 
     log(text) {

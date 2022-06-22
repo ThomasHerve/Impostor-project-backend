@@ -85,6 +85,7 @@ export class Player {
         if(this.impostor) {
             role = "impostor"
         }
+        console.log("Send ROLE")
         this.ws.send(JSON.stringify({
             "type": "playerRole",
             "role": role

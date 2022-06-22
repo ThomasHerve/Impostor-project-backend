@@ -28,7 +28,7 @@ wss.on('connection', (ws)=>{
         data = JSON.parse(data)
         if(data.type === "createLobby") {
             if(id === "") {
-                id = registerPlayer(ws)
+                id = registerPlayer(data.name, ws)
                 lobby.createLobby(
                     id,
                     (lobbyID) => {
@@ -46,7 +46,7 @@ wss.on('connection', (ws)=>{
             }
         } else if(data.type === "joinLobby") {
             if(id === "") {
-                id = registerPlayer(ws)
+                id = registerPlayer(data.name, ws)
                 lobby.joinLobby(
                     data.lobbyID,
                     id,
@@ -164,14 +164,14 @@ const playersIDSet = new Set() // All the player, even the ones in game, to warr
  * @param {WebSocket} ws the websocket of the player
  * @returns {String} the id of the player
  */
-function registerPlayer(ws) {
+function registerPlayer(name, ws) {
     let id = lobby.makeId(5)
     while(playersIDSet.has(id)) {
         id = lobby.makeId(5)
     }
     playersIDSet.add(id)
     playersMap[id] = {
-        "name": "Player",
+        "name": name === undefined ? "Player" : name,
         "ws": ws
     }
     return id
