@@ -84,10 +84,9 @@ function question() {
             } else if(value.startsWith("Create") || value.startsWith("create") || value === "c") {
                 let obj = {
                     "type": "createLobby",
-                    "playerName": "testPlayerCreate"
                 }
                 if(name != undefined) {
-                    obj.name = name
+                    obj.playerName = name
                 }
                 ws.send(JSON.stringify(obj))
             } else if(value.startsWith("Join") || value.startsWith("join") || (value.startsWith("j") && value.split(" ")[0] === "j")) {
@@ -97,11 +96,10 @@ function question() {
                 } else {
                     let obj = {
                         "type": "joinLobby",
-                        "playerName": "testPlayerJoin",
                         "lobbyID": value.split(" ")[1]
                     }
                     if(name != undefined) {
-                        obj.name = name
+                        obj.playerName = name
                     }
                     ws.send(JSON.stringify(obj))
                 }

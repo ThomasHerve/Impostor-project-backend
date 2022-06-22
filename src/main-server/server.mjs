@@ -28,7 +28,7 @@ wss.on('connection', (ws)=>{
         data = JSON.parse(data)
         if(data.type === "createLobby") {
             if(id === "") {
-                id = registerPlayer(data.name, ws)
+                id = registerPlayer(data.playerName, ws)
                 lobby.createLobby(
                     id,
                     (lobbyID) => {
@@ -45,8 +45,8 @@ wss.on('connection', (ws)=>{
                 }))
             }
         } else if(data.type === "joinLobby") {
-            if(id === "") {
-                id = registerPlayer(data.name, ws)
+            if(id === "" && data.lobbyID != undefined) {
+                id = registerPlayer(data.playerName, ws)
                 lobby.joinLobby(
                     data.lobbyID,
                     id,
