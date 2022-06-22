@@ -163,9 +163,8 @@ export class Game {
      * Method to call at the start of a game to notify each player of their role
      */
     notifyPlayersRoles() {
-        this.log(`Type of players: ${typeof this.players}, ${typeof this.players[Object.keys(this.players)[0]]}`)
-        this.players.forEach(
-            (player) => player.sendRole()
+        Object.keys(this.players).forEach(
+            (player) => this.players[player].sendRole()
         )
     }
 
@@ -184,8 +183,8 @@ export class Game {
      * Method to call to generate the task pathing of each player
      */
     giveTasks() {
-        this.players.forEach(
-            (player) => player.generateTasks(this.tasks, this.numTasks)
+        Object.keys(this.players).forEach(
+            (player) => this.players[player].generateTasks(this.tasks, this.numTasks)
         )
     }
 
@@ -193,8 +192,8 @@ export class Game {
      * Call this function to send the first task to do to all players
      */
     sendFirstTaskToAllPlayers() {
-        this.players.forEach(
-            (player) => player.sendNextTask()
+        Object.keys(this.players).forEach(
+            (player) => this.players[player].sendNextTask()
         )
     }
 

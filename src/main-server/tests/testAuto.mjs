@@ -68,6 +68,7 @@ function transit(ws, name, port) {
     
     ws.on("message", (server)=>{
         server = JSON.parse(server)
+        process.stdout.write(`${name}: `)
         console.log(server)
     })
     ws.on('close', ()=>{
@@ -85,12 +86,26 @@ function transit(ws, name, port) {
     })
 }
 
+let test1 = false
+let test2 = false
 ws1.on("open", ()=>{
-    ws1.send(JSON.stringify({
-        "type": "createLobby",
-        "playerName": name1
-    }))
+    test1 = true
+    start()
 })
+
+ws2.on("open", ()=>{
+    test2 = true
+    start()
+})
+
+function start() {
+    if(test1 && test2) {
+        ws1.send(JSON.stringify({
+            "type": "createLobby",
+            "playerName": name1
+        }))
+    }
+}
 
 
 
