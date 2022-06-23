@@ -24,6 +24,7 @@ export class Game {
     constructor(port) {
         let initialized = false
         this.players = {}
+        this.disconnectedPlayers = {}
         this.port = port
         this.playersIDSet = new Set()
         this.wss = new WebSocketServer({
@@ -33,12 +34,35 @@ export class Game {
         let numberOfPlayers = 0
         let totalPlayers = undefined
         this.wss.on('connection', (ws)=>{
-            // Clients cannot connect to this websocket (we don't open 8081 on AWS), we are sure the messages are from our agents and are safe
             ws.on('message', (data)=>{
                 data = JSON.parse(data)
+                let id = ""
                 if(initialized) {
-                    // The game is running, for e better code comprehension the behaviour is defined bellow
-                    handleMessage(data, ws)
+                    if(data.type === "reconnect") {
+                        if(this.disconnectedPlayers[data.token] != undefined) {
+                            id = data.token
+                            let player = this.disconnectedPlayers[id]
+                            player.ws = ws
+                            this.players[id] = player
+                            delete this.disconnectedPlayers[id]
+                            ws.on("close", ()=>{
+                                let player = this.players[id]
+                                this.disconnectedPlayers[id] = player
+                                delete this.players[id]
+                            })
+                            this.log(`Player ${player.name} reconnected`)
+                            ws.send(JSON.stringify({
+                                "type": "playerReconnected",
+                            }))
+                        } else {
+                            ws.send(JSON.stringify({
+                                "type": "invalidPacket",
+                            }))
+                        }
+                    } else {
+                        // The game is running, for e better code comprehension the behaviour is defined bellow
+                        handleMessage(data, ws)
+                    }
                 } else  {
                     // Manage to get all the players
                     if(data.spawner != undefined) {
@@ -47,7 +71,7 @@ export class Game {
                         totalPlayers = data.parameters.numPlayers
                         this.log(`Spawner send that we have ${totalPlayers} players`)
                     } else if(data.type === "connect" && data.playerName != undefined) {
-                        this.addPlayer(data.playerName, ws)
+                        id = this.addPlayer(data.playerName, ws)
                         numberOfPlayers++
                         this.log(`We currently have ${numberOfPlayers} players`)
                     }
@@ -78,6 +102,16 @@ export class Game {
         this.log(`player ${name} (with id ${id}) joined`)
         this.playersIDSet.add(id)
         this.players[id] = new Player(name, ws, id)
+        ws.send(JSON.stringify({
+            "type": "playerToken",
+            "token": id
+        }))
+        ws.on("close", ()=>{
+            let player = this.players[id]
+            this.disconnectedPlayers[id] = player
+            delete this.players[id]
+        })
+        return id
     }
 
     setParameters(parameters) {
@@ -94,8 +128,14 @@ export class Game {
      */
      handleMessage(data, ws) {
         // TODO HANDLE MESSAGES
-        
+        if(data.type === "") {
 
+        }
+        else {
+            ws.send(JSON.stringify({
+                "type": "invalidPacket",
+            }))
+        }
      }
     
     /**
@@ -104,15 +144,6 @@ export class Game {
      */
     playerLeaved(playerID) {
         this.players[playerID].online = false
-    }
-
-    /**
-     * handle the reconnection of a player
-     * @param {String} playerID 
-     */
-    playerReconnect(playerID, ws) {
-        this.players[playerID].online = true
-        this.players[playerID].ws = ws
     }
 
     // Game functions, called from this class (excepting startGame)

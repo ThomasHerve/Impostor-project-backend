@@ -17,7 +17,7 @@ ws.on("message", (server)=>{
     server = JSON.parse(server)
     if(server.type == "startGame") {
         console.log(server)
-        startGame(server.port)
+        startGame(server.port, false, undefined)
     } else {
         console.log(server)
         question()
@@ -25,7 +25,7 @@ ws.on("message", (server)=>{
 })
 
 // Game
-function startGame(port) {
+function startGame(port, reconnect, token) {
     ingame = true
     ws.close()
     ws = new WebSocket(`ws://localhost:${port}`)
@@ -42,12 +42,22 @@ function startGame(port) {
     if(name === undefined) {
         name = "Player"
     }
-    ws.on("open", ()=>{
-        ws.send(JSON.stringify({
-            "type": "connect",
-            "playerName": name
-        }))
-    })
+    if(!reconnect) {
+        ws.on("open", ()=>{
+            ws.send(JSON.stringify({
+                "type": "connect",
+                "playerName": name
+            }))
+        })
+    } else {
+        ws.on("open", ()=>{
+            ws.send(JSON.stringify({
+                "type": "reconnect",
+                "token": token 
+            }))
+        })
+    }
+    
 }
 
 // Start
@@ -145,10 +155,15 @@ function question() {
                     "type": "changeName",
                     "playerName": name
                 }))
-                question() 
+                question()
             } else if(value.startsWith("exit")) {
                 ws.close()
-            } 
+            } else if(value.startsWith("reconnect")) {
+                let values = value.split(" ")
+                let port = values[1]
+                let token = values[2]
+                startGame(port, true, token)
+            }
             else {
                 console.log("Unknown command")
                 question()
