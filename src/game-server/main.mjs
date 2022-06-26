@@ -1,8 +1,8 @@
-import { Lobby } from '../main-server/lobby.mjs'
 import { Player } from './player.mjs'
 import {Task} from './task.mjs'
-const makeId = Lobby().makeId
-
+import { WebSocketServer } from 'ws';
+import { Lobby } from '../main-server/lobby.mjs'
+const lobby = Lobby()
 
 /**
  * 
@@ -12,44 +12,131 @@ const makeId = Lobby().makeId
  * numTasks (Optional): number of tasks per crewmate, 10 by default
  */
 
-// ********************* DATA STRUCTURES ********************
-
-const gameMap = {} // GameID -> Game
-const playerMap = {} // PlayerID -> GameID
 
 // ********************* PUBLIC CLASSES *******************
 
-class Game {
+export class Game {
 
     /**
      * The Game constructor
-     * @param {Object} parameters object containing the parameters (See above for more details)
-     * @param {*} endGameCallback Function which unregister one player, to call on all player when game is over
+     * Initialize the listening websocket
      */
-    constructor(parameters, endGameCallback) {
-        // Attributes
-        this.endGameCallback = endGameCallback
-        this.parameters = parameters
-        this.id = makeId(5)
+    constructor(port) {
+        let initialized = false
         this.players = {}
-        this.tasks = this.createTasks(parameters)
-        this.numTasks = Number.isFinite(parameters["numTasks"]) ? parameters["numTasks"] : 10
+        this.disconnectedPlayers = {}
+        this.port = port
+        this.playersIDSet = new Set()
+        this.wss = new WebSocketServer({
+            port: port
+        })
+        
+        let numberOfPlayers = 0
+        let totalPlayers = undefined
+        this.wss.on('connection', (ws)=>{
+            ws.on('message', (data)=>{
+                data = JSON.parse(data)
+                let id = ""
+                if(initialized) {
+                    if(data.type === "reconnect") {
+                        if(this.disconnectedPlayers[data.token] != undefined) {
+                            id = data.token
+                            let player = this.disconnectedPlayers[id]
+                            player.ws = ws
+                            this.players[id] = player
+                            delete this.disconnectedPlayers[id]
+                            ws.on("close", ()=>{
+                                let player = this.players[id]
+                                this.disconnectedPlayers[id] = player
+                                delete this.players[id]
+                            })
+                            this.log(`Player ${player.name} reconnected`)
+                            ws.send(JSON.stringify({
+                                "type": "playerReconnected",
+                            }))
+                        } else {
+                            ws.send(JSON.stringify({
+                                "type": "invalidPacket",
+                            }))
+                        }
+                    } else {
+                        // The game is running, for e better code comprehension the behaviour is defined bellow
+                        handleMessage(data, ws)
+                    }
+                } else  {
+                    // Manage to get all the players
+                    if(data.spawner != undefined) {
+                        // We get the number of players + the parameters
+                        this.setParameters(data.parameters)
+                        totalPlayers = data.parameters.numPlayers
+                        this.log(`Spawner send that we have ${totalPlayers} players`)
+                    } else if(data.type === "connect" && data.playerName != undefined) {
+                        id = this.addPlayer(data.playerName, ws)
+                        numberOfPlayers++
+                        this.log(`We currently have ${numberOfPlayers} players`)
+                    }
 
-        while(this.id in gameMap) {
-            this.id = makeId(5)
-        }
-        gameMap[this.id] = this
+                    // Launch
+                    if(totalPlayers != undefined && totalPlayers === numberOfPlayers) {
+                        this.log(`All conditions fullfilled to start the game`)
+                        initialized = true
+                        this.startGame()
+                    }
+                } 
+            })
+        })
     }
+
 
     // External functions, Which means they are called by the outside (lobby management, player disconnecting/reconnecting)
     /**
      * Add a player to the game
-     * @param {Object} player 
+     * @param {String} name the player to register
+     * @param {WebSocket} ws the websocket of the player
      */
-    addPlayer(player) {
-        this.players[player.id] = new Player(player.name, player.ws, player.id)
-        playerMap[player.id] = this.id
+    addPlayer(name, ws) {
+        let id = lobby.makeId(5)
+        while(this.playersIDSet.has(id)) {
+            id = lobby.makeId(5)
+        }
+        this.log(`player ${name} (with id ${id}) joined`)
+        this.playersIDSet.add(id)
+        this.players[id] = new Player(name, ws, id)
+        ws.send(JSON.stringify({
+            "type": "playerToken",
+            "token": id
+        }))
+        ws.on("close", ()=>{
+            let player = this.players[id]
+            this.disconnectedPlayers[id] = player
+            delete this.players[id]
+        })
+        return id
     }
+
+    setParameters(parameters) {
+        // Attributes
+        this.parameters = parameters
+        this.tasks = this.createTasks(parameters)
+        this.numTasks = Number.isFinite(parameters["numTasks"]) ? parameters["numTasks"] : 10
+    }
+
+    /**
+     * Function to handle commands from users
+     * @param {Object} data
+     * @param {WebSocket} ws
+     */
+     handleMessage(data, ws) {
+        // TODO HANDLE MESSAGES
+        if(data.type === "") {
+
+        }
+        else {
+            ws.send(JSON.stringify({
+                "type": "invalidPacket",
+            }))
+        }
+     }
     
     /**
      * Handle a player of this particular game leaving
@@ -57,27 +144,6 @@ class Game {
      */
     playerLeaved(playerID) {
         this.players[playerID].online = false
-    }
-
-    /**
-     * handle the reconnection of a player
-     * @param {String} playerID 
-     */
-    playerReconnect(playerID, ws) {
-        this.players[playerID].online = true
-        this.players[playerID].ws = ws
-    }
-
-    /**
-     * Function to handle commands from users
-     * @param {Object} data 
-     * @param {WebSocket} id
-     */
-    handleMessage(data, id) {
-        let ws = this.players[id].ws
-
-
-
     }
 
     // Game functions, called from this class (excepting startGame)
@@ -100,15 +166,17 @@ class Game {
      * Method which design the impostors among the players
      */
     selectImpostors() {
-        // Security, you cannot have more than 25% of the players as impostor
         let playersID = Object.keys(this.players)
-        let numberOfImpostors = Math.min(this.parameters.numberOfImpostors, Math.floor(playersID.length / 4))
+        let numberOfImpostors = Math.min(this.parameters.numberOfImpostors, Math.max(Math.floor(playersID.length / 4), 1)) // Security, you cannot have more than 25% of the players as impostor
+
+        this.numberOfImpostors = numberOfImpostors // Attribute
 
         // Security against any possible infinite loop
         let maxRetry = 10000
-
+        this.log(`Number of impostors: ${numberOfImpostors}`)
         while(numberOfImpostors > 0) {
             let randomPlayer = playersID[Math.floor(Math.random() * playersID.length)]
+            this.log(`Random player selected is: ${randomPlayer}`)
             if(!this.players[randomPlayer].impostor) {
                 this.players[randomPlayer].impostor = true
                 numberOfImpostors--
@@ -126,9 +194,9 @@ class Game {
      * Method to call at the start of a game to notify each player of their role
      */
     notifyPlayersRoles() {
-        for(let player in this.players) {
-            player.sendRole()
-        }
+        Object.keys(this.players).forEach(
+            (player) => this.players[player].sendRole()
+        )
     }
 
     /**
@@ -146,18 +214,18 @@ class Game {
      * Method to call to generate the task pathing of each player
      */
     giveTasks() {
-        for(let player in this.players) {
-            player.generateTasks(this.tasks, this.numTasks)
-        }
+        Object.keys(this.players).forEach(
+            (player) => this.players[player].generateTasks(this.tasks, this.numTasks)
+        )
     }
 
     /**
      * Call this function to send the first task to do to all players
      */
     sendFirstTaskToAllPlayers() {
-        for(let player in this.players) {
-            player.sendNextTask()
-        }
+        Object.keys(this.players).forEach(
+            (player) => this.players[player].sendNextTask()
+        )
     }
 
     // End the game
@@ -165,83 +233,16 @@ class Game {
      * Method to call to end this game
      */
     end() {
-        for(let player in this.players) {
-            delete playerMap[player.id]
-            this.endGameCallback(player.id)
-        }
-        delete gameMap[this.id]
-        console.log(`Game ${this.id} ended`)
+        this.wss.close()
+        this.log(`Game ${this.id} ended`)
+    }
+
+    log(text) {
+        console.log(`Game ${this.port}: ${text}`)
     }
 }
 
 
-// Entrypoint for server
-function handleMessage(data, id) {
-    if(data.gameID != undefined && data.gameID in gameMap) {
-        gameMap[data.gameID].handleMessage(data, id)
-    }
-}
-
-/**
- * Function to create a new game
- * @param {Function} endGameCallback
- * @returns {Game}
- */
-function createGame(endGameCallback) {
-    return new Game(endGameCallback)
-}
-
-/**
- * Function to handle a player which broke the connection with the server
- * @param {String} id the id of the player that broke the connection
- */
-function handleLeave(id) {
-    if(id in playerMap && playerMap[id] in gameMap) {
-        gameMap[playerMap[id]].playerLeaved(id)
-    }
-}
-
-/**
- * Function to handle the reconnection of a player that leaved a game
- * @param {String} id playerID
- * @param {*} ws the new websocket of the player
- */
-function handleReconnect(id, ws) {
-    if(id in playerMap && playerMap[id] in gameMap) {
-        gameMap[playerMap[id]].playerReconnect(id, ws)
-    }
-}
-
-function checkGameValid(parameters, ownerID, playersID) {
-    let n = playersID.length + 1
-    if(n < 4) {
-        return false
-    }
-    if(parameters.numberOfImpostors < 1) {
-        return false
-    }
-    // At least 4 tasks
-    if(parameters.tasks.length < 4) {
-        return false
-    }
-    // Check tasks are correct
-    parameters.tasks.forEach((task)=>{
-        if(task.length != 2) {
-            return false
-        }
-    })
-    return true
-}
-
-export function GameInterface() {
-    return {
-        'createGame': createGame,
-        'handleMessage': handleMessage,
-        'handleLeave':handleLeave,
-        'handleReconnect':handleReconnect,
-        'checkGameValid': checkGameValid
-    }
-}
 
 /**
  * 

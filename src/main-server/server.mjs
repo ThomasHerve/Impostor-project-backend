@@ -1,14 +1,13 @@
-import { WebSocketServer } from 'ws';
+import { WebSocketServer, WebSocket } from 'ws';
 import { Lobby } from './lobby.mjs'
-import { GameInterface } from '../game-server/main.mjs'
 const lobby = Lobby()
-const game = GameInterface()
 
 // ********************* SERVER LOGIC ********************
 
 const wss = new WebSocketServer({
     port: 8080
 })
+console.log("Server started")
 
 /**
  * data contains : 
@@ -16,19 +15,20 @@ const wss = new WebSocketServer({
  * - playerName : name of the player, choose by the player itself 
  */
 wss.on('connection', (ws)=>{
+    console.log("Anonymous user connected")
     let id = ""
     ws.on('close', ()=>{
         if(id in playersMap) {
             leaveLobby(id)
         } else {
-            game.handleLeave(id)
+            console.log(`Anonymous user leaved`)
         }
     })
     ws.on('message', (data)=>{
         data = JSON.parse(data)
         if(data.type === "createLobby") {
             if(id === "") {
-                id = registerPlayer(ws)
+                id = registerPlayer(data.playerName, ws)
                 lobby.createLobby(
                     id,
                     (lobbyID) => {
@@ -36,6 +36,7 @@ wss.on('connection', (ws)=>{
                             "type": "lobbyCreated",
                             "lobbyID" : lobbyID,
                         }))
+                        console.log(`Player ${playersMap[id].name} created a lobby with id ${lobbyID}`)
                     }
                 )
             } else {
@@ -44,8 +45,8 @@ wss.on('connection', (ws)=>{
                 }))
             }
         } else if(data.type === "joinLobby") {
-            if(id === "") {
-                id = registerPlayer(ws)
+            if(id === "" && data.lobbyID != undefined) {
+                id = registerPlayer(data.playerName, ws)
                 lobby.joinLobby(
                     data.lobbyID,
                     id,
@@ -61,6 +62,7 @@ wss.on('connection', (ws)=>{
                             "type": "lobbyJoinSuccess",
                             "players": playerArray 
                         }))
+                        console.log(`Player ${playersMap[id].name} joined the ${data.lobbyID} lobby`)
                     },
                     // failure : lobby doesn't exist
                     () => {
@@ -85,10 +87,14 @@ wss.on('connection', (ws)=>{
         } else if(data.type === "leaveLobby") {
             if(id != "") {
                 leaveLobby(id)
+                ws.send(JSON.stringify({
+                    "type": "acknowledgeLeaveLobby",
+                }))
                 id = ""
             }
         } else if(data.type === "changeName") {
             if(id != "" && data.playerName != undefined) {
+                console.log(`Player ${playersMap[id].name} renammed to ${data.playerName}`)
                 playersMap[id].name = data.playerName
                 lobby.callbackAllPlayers(id, (p)=>{
                     if(p != id) {
@@ -96,50 +102,51 @@ wss.on('connection', (ws)=>{
                             "type": "changeName",
                             "players": getNames(lobby.allPlayerOfLobby(p))
                         }))
+                    } else {
+                        ws.send(JSON.stringify({
+                            "type": "acknowledgeNewName",
+                        }))
                     }
                 })
             }
         } else if(data.type === "launchGame") {       
-            if(data.numberOfImpostors == undefined || data.tasks == undefined) {
+            if(data.numberOfImpostors == undefined || data.tasks == undefined || id === "") {
                 ws.send(JSON.stringify({
                     "type": "invalidPacket",
                 }))
             } else {
-                if(!lobby.isOwner(id) || !game.checkGameValid(parameters, id, lobby.allPlayerOfLobby(id))) {
+                let parameters = {
+                    "numberOfImpostors": data.numberOfImpostors,
+                    "tasks": data.tasks
+                }
+                if(!lobby.isOwner(id) || !checkGameValid(parameters, id, lobby.allPlayerOfLobby(id))) {
                     ws.send(JSON.stringify({
                         "type": "invalidLobby",
                     }))
                     return
                 }
                 let gameInstance = undefined
-                let parameters = {
-                    "numberOfImpostors": data.numberOfImpostors,
-                    "tasks": data.tasks
-                }
                 lobby.launchGame(id,
                     () => {
                         // Start game
-                        gameInstance = game.createGame(parameters, unregisterPlayer)
+                        // gameInstance = game.createGame(parameters, unregisterPlayer) // OLD
+                        gameInstance = new Game(parameters)
                     }, 
                     (playerID) => {
-                    playersMap[playerID].ws.send(JSON.stringify({
-                        "type": "startGame"
-                    }))
                     // Add player to the game
                     gameInstance.addPlayer({
                         'id': playerID,
                         'name': playersMap[playerID].name,
                         'ws': playersMap[playerID].ws
                     })
-                    
+                    // Remove the players from the map which track them
                     delete playersMap[playerID]
                 })
                 if(gameInstance != undefined) {
-                    gameInstance.startGame()
+                    games.push(gameInstance)
+                    gameInstance.launchGame()
                 }
             }
-        } else {
-            game.handleMessage(data, id)
         }
     })
 })
@@ -157,14 +164,14 @@ const playersIDSet = new Set() // All the player, even the ones in game, to warr
  * @param {WebSocket} ws the websocket of the player
  * @returns {String} the id of the player
  */
-function registerPlayer(ws) {
+function registerPlayer(name, ws) {
     let id = lobby.makeId(5)
     while(playersIDSet.has(id)) {
         id = lobby.makeId(5)
     }
     playersIDSet.add(id)
     playersMap[id] = {
-        "name": "Player",
+        "name": name === undefined ? "Player" : name,
         "ws": ws
     }
     return id
@@ -189,10 +196,12 @@ function leaveLobby(playerID) {
     ids = ids.filter(item => {
         return item != playerID
     });
-    let names = getNames(ids)
     lobby.leaveLobby(playerID,
         // Non owner leaving
         (pID)=>{
+            let names = getNames(ids.filter(item => {
+                return item != pID
+            }))
             playersMap[pID].ws.send(JSON.stringify({
                 "type": "playerLeft",
                 "players": names
@@ -218,6 +227,75 @@ function getNames(playersID) {
         ret.push(playersMap[item].name)
     })
     return ret
+}
+
+// ********************* Game descriptor class ***************
+
+const spawnerWs = new WebSocket("ws://localhost:8081")
+
+spawnerWs.on("message", (data)=>{
+    data = JSON.parse(data)
+    console.log(`Game created on port ${data.port}`)
+    let port = data.port
+    let game = games.pop()
+    game.notifyPlayers(port)
+})
+
+let games = []
+
+class Game {
+
+    constructor(parameters) {
+        this.parameters = parameters
+        this.players = []
+    }
+
+    addPlayer(playerID) {
+        this.players.push(playerID)
+    }
+
+    launchGame() {
+        // Create Game
+        this.parameters["numPlayers"] = this.players.length
+        console.log("Send game creation request")
+        spawnerWs.send(JSON.stringify({
+            "command": "create",
+            "parameters": this.parameters
+        }))
+    }
+
+    notifyPlayers(port) {
+        // Notify players
+        this.players.forEach((player)=>{
+            player.ws.send(JSON.stringify({
+                "type": "startGame",
+                "port": port
+            }))
+            // Remove player from id map
+            unregisterPlayer(player.id)
+        })
+    }
+}
+
+function checkGameValid(parameters, ownerID, playersID) {
+    let n = playersID.length + 1
+    if(n < lobby.minPlayers) {
+        return false
+    }
+    if(parameters.numberOfImpostors < 1) {
+        return false
+    }
+    // At least 4 tasks
+    if(parameters.tasks.length < 4) {
+        return false
+    }
+    // Check tasks are correct
+    parameters.tasks.forEach((task)=>{
+        if(task.length != 2) {
+            return false
+        }
+    })
+    return true
 }
 
 /**
